@@ -54,7 +54,7 @@ export default async function BarangPage({ params }: { params: Promise<{ id: str
         <Card>
           <CardHeader><CardTitle>Data barang</CardTitle></CardHeader>
           <CardContent>
-            <ItemForm item={{ id: item.id, name: item.name, unit: item.unit, minStock: Number(item.minStock), notes: item.notes ?? "", active: item.active }} />
+            <ItemForm item={{ id: item.id, name: item.name, unit: item.unit, minStock: Number(item.minStock), unitCost: Number(item.unitCost), notes: item.notes ?? "", active: item.active }} />
             <div className="mt-4 flex gap-2">
               <Button asChild variant="outline" size="sm"><Link href={`/inventory/mutasi/baru?barang=${item.id}`}>Catat mutasi</Link></Button>
             </div>

@@ -24,6 +24,18 @@ Next.js (TypeScript) + Tailwind + komponen gaya shadcn/ui hitam-putih, PostgreSQ
 - UI: `/inventory` (Barang jadi / Bahan baku, status Aman-Menipis-Habis, pergerakan terakhir), `/inventory/mutasi` (riwayat dengan filter), `/inventory/mutasi/baru`, `/inventory/barang/[id]` (data, BOM, riwayat). Gudang mengelola stok; Direktur dan Admin melihat dan mengelola semua; Marketing dan Keuangan hanya melihat.
 - Tidak termasuk: PO dan penyusutan aset.
 
+## Modul Proyek — isi
+- Pelanggan (`/pelanggan`): dikelola lewat hak akses modul Order (Marketing, Admin, Direktur); dipakai bersama GTF dan SBA.
+- Proyek (`Project`): dua jenis. **Pesanan** (`PRY-2026-001`) wajib punya perusahaan dan pelanggan; PPN diambil dari perusahaan saat dibuat (GTF 0, SBA 11) lalu dibekukan. **Produksi stok** (`STK-2026-001`) adalah order produksi internal tanpa pelanggan. Setiap proyek berisi baris barang jadi (jumlah bulat, harga satuan tanpa PPN). Pesanan dibuat dengan hak `order: create`, produksi stok dengan `proyek: create`.
+- Tahapan per baris (`ProjectStage`): rangka besi dan potong kayu paralel → rakit → finishing → QC → packing → kirim, dengan status Belum mulai / Dikerjakan / Selesai / Tertahan (alasan wajib). Satu tahap tidak boleh lebih maju dari tahap sebelumnya dan tidak boleh mundur di bawah yang sudah diambil tahap berikutnya (`src/lib/production.ts`). Produksi stok berhenti di QC.
+- Pemakaian bahan: tombol "Keluarkan bahan" memanggil `issueMaterialsForProduction` (semua-atau-tidak-sama-sekali); rangka besi dan potong kayu baru bisa jalan sebanyak unit yang bahannya sudah dikeluarkan. Nilai bahan = jumlah × harga pokok barang (`Item.unitCost`, diisi di master barang) dan otomatis menjadi biaya proyek.
+- QC lulus memanggil `receiveFinishedGoodsAtQc`: barang jadi masuk stok saat itu juga (satu catatan QC = satu mutasi, aman diulang).
+- Pengiriman bertahap: rencana pengiriman per proyek, hanya untuk unit yang sudah dipacking; tombol "Kirim" memanggil `shipFinishedGoods` dan menambah tahap Kirim. Proyek otomatis Selesai saat semua tahap penuh.
+- Biaya dan margin: biaya bahan (otomatis dari stok atau pembelian langsung), tenaga kerja, lain-lain; margin = nilai tanpa PPN dikurangi biaya.
+- Semua perubahan satu proyek dikunci per proyek (advisory lock) sehingga dua permintaan bersamaan tidak melewati batas jumlah.
+- UI: `/proyek` (daftar berjalan / produksi stok / selesai, filter perusahaan, posisi tahapan semua proyek), `/proyek/baru`, `/proyek/[id]` (tab Produksi, Pengiriman, Biaya). Pembatalan proyek (hak `delete`, Direktur) hanya bila belum ada bahan, QC, atau kiriman.
+- Tidak termasuk: Penawaran, Konfirmasi Order, Invoice, Kwitansi, dan pembayaran (modul berikutnya).
+
 ## Pengembangan lokal
 ```bash
 cp .env.example .env            # isi AUTH_SECRET dan ADMIN_PASSWORD
@@ -48,4 +60,4 @@ docker compose up -d --build
 Barang jadi masuk stok saat QC lulus; satu gudang barang jadi; bahan baku juga dicatat; tanpa penyusutan aset dan tanpa PO untuk sekarang.
 
 ## Berikutnya
-Modul Proyek (tahap produksi) yang memanggil fungsi/endpoint stok di atas.
+Modul dokumen: Penawaran, Konfirmasi Order, Invoice, Kwitansi (membuat proyek dari Konfirmasi Order, pembayaran).

@@ -41,39 +41,40 @@ enum MovementType {
 }
 
 model Company {
-  id            String   @id @default(cuid())
-  code          String   @unique // GTF, SBA
-  name          String
-  address       String?
-  phone         String?
-  email         String?
-  ppnRate       Decimal  @default(0) @db.Decimal(5, 2) // GTF 0, SBA 11
-  bankName      String?
-  bankAccount   String?
-  bankHolder    String?
+  id             String   @id @default(cuid())
+  code           String   @unique // GTF, SBA
+  name           String
+  address        String?
+  phone          String?
+  email          String?
+  ppnRate        Decimal  @default(0) @db.Decimal(5, 2) // GTF 0, SBA 11
+  bankName       String?
+  bankAccount    String?
+  bankHolder     String?
   signatoryName  String?
   signatoryTitle String?
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  users       UserCompany[]
-  sequences   DocumentSequence[]
-  numbers     DocumentNumber[]
+  users     UserCompany[]
+  sequences DocumentSequence[]
+  numbers   DocumentNumber[]
+  projects  Project[]
 
   @@map("companies")
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   name         String
   passwordHash String
   role         Role
-  active       Boolean  @default(true)
+  active       Boolean   @default(true)
   lastLoginAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   companies UserCompany[]
   auditLogs AuditLog[]
@@ -142,15 +143,18 @@ model Item {
   name      String
   unit      String // unit, set, lembar, kg, meter, ...
   minStock  Decimal  @default(0) @db.Decimal(14, 3)
+  // Harga pokok per satuan (rupiah), dipakai menghitung biaya bahan proyek.
+  unitCost  Decimal  @default(0) @db.Decimal(16, 2)
   onHand    Decimal  @default(0) @db.Decimal(14, 3)
   notes     String?
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  movements  StockMovement[]
-  bomLines   BomLine[]       @relation("BomProduct")
-  usedInBoms BomLine[]       @relation("BomMaterial")
+  movements    StockMovement[]
+  bomLines     BomLine[]       @relation("BomProduct")
+  usedInBoms   BomLine[]       @relation("BomMaterial")
+  projectLines ProjectLine[]
 
   @@index([kind, active])
   @@map("items")
@@ -158,21 +162,21 @@ model Item {
 
 // Riwayat mutasi stok; tidak pernah diubah atau dihapus (koreksi = mutasi baru).
 model StockMovement {
-  id           String       @id @default(cuid())
-  itemId       String
-  type         MovementType
-  qty          Decimal      @db.Decimal(14, 3) // bertanda
-  balanceAfter Decimal      @db.Decimal(14, 3)
-  note         String?
+  id             String       @id @default(cuid())
+  itemId         String
+  type           MovementType
+  qty            Decimal      @db.Decimal(14, 3) // bertanda
+  balanceAfter   Decimal      @db.Decimal(14, 3)
+  note           String?
   // Rujukan ke dokumen/proses asal, mis. refType "PRODUKSI", refId id batch produksi.
-  refType      String?
-  refId        String?
+  refType        String?
+  refId          String?
   // Kunci idempoten: mutasi dengan kunci yang sama hanya tercatat sekali
   // (mencegah QC lulus yang terkirim dua kali menambah stok dua kali).
-  idempotencyKey String?    @unique
-  userId       String?
-  createdAt    DateTime     @default(now())
-  item         Item         @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  idempotencyKey String?      @unique
+  userId         String?
+  createdAt      DateTime     @default(now())
+  item           Item         @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
   @@index([itemId, createdAt])
   @@index([createdAt])
@@ -191,4 +195,209 @@ model BomLine {
 
   @@unique([productId, materialId])
   @@map("bom_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Modul Proyek (pesanan dan produksi)
+// ---------------------------------------------------------------------------
+
+// Tahapan produksi. Rangka besi dan potong kayu berjalan paralel; selanjutnya berurutan.
+enum Stage {
+  RANGKA_BESI
+  POTONG_KAYU
+  RAKIT
+  FINISHING
+  QC
+  PACKING
+  KIRIM
+}
+
+enum ProjectKind {
+  ORDER // pesanan pelanggan
+  STOK // order produksi internal untuk stok, tanpa pelanggan
+}
+
+enum ProjectStatus {
+  BERJALAN
+  SELESAI
+  BATAL
+}
+
+enum DeliveryStatus {
+  RENCANA
+  TERKIRIM
+  BATAL
+}
+
+enum CostCategory {
+  BAHAN
+  TENAGA
+  LAIN
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  contact   String? // nama kontak (PIC)
+  phone     String?
+  email     String?
+  address   String?
+  taxId     String? // NPWP
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
+
+  @@index([name])
+  @@map("customers")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  code        String        @unique // PRY-2026-001 (pesanan) / STK-2026-001 (produksi stok)
+  kind        ProjectKind
+  status      ProjectStatus @default(BERJALAN)
+  name        String
+  companyId   String? // kosong untuk produksi stok
+  customerId  String?
+  orderRef    String? // nomor KO/PO pelanggan bila ada
+  orderDate   DateTime      @default(now())
+  dueDate     DateTime? // estimasi selesai kirim
+  // PPN diambil dari perusahaan saat proyek dibuat (GTF 0, SBA 11), lalu dibekukan.
+  ppnRate     Decimal       @default(0) @db.Decimal(5, 2)
+  notes       String?
+  createdById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  company    Company?      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  customer   Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  lines      ProjectLine[]
+  deliveries Delivery[]
+  costs      ProjectCost[]
+
+  @@index([status, dueDate])
+  @@index([kind, status])
+  @@map("projects")
+}
+
+// Satu baris pesanan = satu barang jadi dengan jumlahnya.
+model ProjectLine {
+  id          String  @id @default(cuid())
+  projectId   String
+  productId   String
+  qty         Int
+  unitPrice   Decimal @default(0) @db.Decimal(16, 2) // tanpa PPN; 0 untuk produksi stok
+  issuedUnits Int     @default(0) // jumlah unit yang bahannya sudah dikeluarkan dari stok
+  note        String?
+  sort        Int     @default(0)
+
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  product   Item            @relation(fields: [productId], references: [id], onDelete: Restrict)
+  stages    ProjectStage[]
+  issues    MaterialIssue[]
+  qcs       QcRecord[]
+  delivered DeliveryLine[]
+
+  @@index([projectId])
+  @@map("project_lines")
+}
+
+// Progres satu tahap pada satu baris: `done` unit sudah melewati tahap ini.
+model ProjectStage {
+  lineId    String
+  stage     Stage
+  done      Int      @default(0)
+  held      Boolean  @default(false) // tertahan (ada kendala)
+  holdNote  String?
+  updatedAt DateTime @updatedAt
+
+  line ProjectLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+
+  @@id([lineId, stage])
+  @@map("project_stages")
+}
+
+// Pemakaian bahan baku untuk sejumlah unit (memanggil issueMaterialsForProduction).
+model MaterialIssue {
+  id        String   @id @default(cuid())
+  lineId    String
+  units     Int
+  cost      Decimal  @db.Decimal(16, 2) // nilai bahan saat dikeluarkan
+  userId    String?
+  createdAt DateTime @default(now())
+
+  line ProjectLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+
+  @@index([lineId])
+  @@map("material_issues")
+}
+
+// QC lulus: sejumlah unit lulus dan masuk stok barang jadi.
+model QcRecord {
+  id        String   @id @default(cuid())
+  lineId    String
+  qty       Int
+  note      String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  line ProjectLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+
+  @@index([lineId])
+  @@map("qc_records")
+}
+
+// Pengiriman bertahap: satu proyek bisa punya beberapa pengiriman.
+model Delivery {
+  id          String         @id @default(cuid())
+  projectId   String
+  seq         Int // pengiriman ke-n dalam proyek
+  plannedDate DateTime?
+  shippedAt   DateTime?
+  status      DeliveryStatus @default(RENCANA)
+  note        String?
+  userId      String?
+  createdAt   DateTime       @default(now())
+
+  project Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  lines   DeliveryLine[]
+
+  @@unique([projectId, seq])
+  @@map("deliveries")
+}
+
+model DeliveryLine {
+  id         String @id @default(cuid())
+  deliveryId String
+  lineId     String
+  qty        Int
+
+  delivery Delivery    @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  line     ProjectLine @relation(fields: [lineId], references: [id], onDelete: Restrict)
+
+  @@unique([deliveryId, lineId])
+  @@map("delivery_lines")
+}
+
+// Biaya proyek: bahan (otomatis dari stok atau manual), tenaga kerja, lain-lain.
+model ProjectCost {
+  id          String       @id @default(cuid())
+  projectId   String
+  category    CostCategory
+  description String
+  amount      Decimal      @db.Decimal(16, 2)
+  // "STOK" bila otomatis dari pemakaian bahan; refId = id MaterialIssue.
+  source      String?
+  refId       String?      @unique
+  incurredAt  DateTime     @default(now())
+  userId      String?
+  createdAt   DateTime     @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_costs")
 }

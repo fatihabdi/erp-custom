@@ -5,7 +5,7 @@ import { updateItem } from "../../actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 
-export function ItemForm({ item }: { item: { id: string; name: string; unit: string; minStock: number; notes: string; active: boolean } }) {
+export function ItemForm({ item }: { item: { id: string; name: string; unit: string; minStock: number; unitCost: number; notes: string; active: boolean } }) {
   const [state, action, pending] = useActionState(updateItem, undefined);
   return (
     <form action={action} className="grid gap-4 sm:grid-cols-2">
@@ -21,6 +21,11 @@ export function ItemForm({ item }: { item: { id: string; name: string; unit: str
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="minStock">Stok minimum</Label>
         <Input id="minStock" name="minStock" inputMode="decimal" defaultValue={String(item.minStock)} />
+      </div>
+      <div className="flex flex-col gap-1.5 sm:col-span-2">
+        <Label htmlFor="unitCost">Harga pokok per satuan (Rp)</Label>
+        <Input id="unitCost" name="unitCost" inputMode="decimal" defaultValue={String(item.unitCost)} />
+        <p className="text-xs text-muted-foreground">Dipakai menghitung biaya bahan proyek saat bahan dikeluarkan.</p>
       </div>
       <div className="flex flex-col gap-1.5 sm:col-span-2">
         <Label htmlFor="notes">Catatan</Label>
