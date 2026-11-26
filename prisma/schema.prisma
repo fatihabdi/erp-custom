@@ -24,6 +24,22 @@ enum DocType {
   KW // Kwitansi
 }
 
+// Jenis barang di gudang: bahan baku atau barang jadi.
+enum ItemKind {
+  RAW // bahan baku
+  FINISHED // barang jadi
+}
+
+// Jenis mutasi stok. Jumlah (qty) pada StockMovement bertanda: + masuk, - keluar.
+enum MovementType {
+  MASUK // stok masuk manual (bahan datang, stok awal)
+  KELUAR // stok keluar manual (rusak, dipakai di luar proyek)
+  PENYESUAIAN // koreksi hasil hitung fisik, boleh + atau -
+  PRODUKSI_MASUK // barang jadi masuk stok saat QC lulus
+  PEMAKAIAN_BAHAN // bahan baku dipakai produksi (sesuai BOM)
+  KIRIM // barang jadi keluar untuk pengiriman
+}
+
 model Company {
   id            String   @id @default(cuid())
   code          String   @unique // GTF, SBA
@@ -115,4 +131,64 @@ model AuditLog {
   @@index([createdAt])
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+// Master barang: bahan baku dan barang jadi dalam satu tabel.
+// onHand adalah saldo berjalan, hanya diubah lewat mutasi (lib/inventory.ts).
+model Item {
+  id        String   @id @default(cuid())
+  kind      ItemKind
+  code      String   @unique // BB-001 (bahan baku), BJ-001 (barang jadi)
+  name      String
+  unit      String // unit, set, lembar, kg, meter, ...
+  minStock  Decimal  @default(0) @db.Decimal(14, 3)
+  onHand    Decimal  @default(0) @db.Decimal(14, 3)
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movements  StockMovement[]
+  bomLines   BomLine[]       @relation("BomProduct")
+  usedInBoms BomLine[]       @relation("BomMaterial")
+
+  @@index([kind, active])
+  @@map("items")
+}
+
+// Riwayat mutasi stok; tidak pernah diubah atau dihapus (koreksi = mutasi baru).
+model StockMovement {
+  id           String       @id @default(cuid())
+  itemId       String
+  type         MovementType
+  qty          Decimal      @db.Decimal(14, 3) // bertanda
+  balanceAfter Decimal      @db.Decimal(14, 3)
+  note         String?
+  // Rujukan ke dokumen/proses asal, mis. refType "PRODUKSI", refId id batch produksi.
+  refType      String?
+  refId        String?
+  // Kunci idempoten: mutasi dengan kunci yang sama hanya tercatat sekali
+  // (mencegah QC lulus yang terkirim dua kali menambah stok dua kali).
+  idempotencyKey String?    @unique
+  userId       String?
+  createdAt    DateTime     @default(now())
+  item         Item         @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([itemId, createdAt])
+  @@index([createdAt])
+  @@index([refType, refId])
+  @@map("stock_movements")
+}
+
+// BOM: bahan baku yang dibutuhkan untuk satu unit barang jadi.
+model BomLine {
+  id         String  @id @default(cuid())
+  productId  String
+  materialId String
+  qty        Decimal @db.Decimal(14, 4) // per 1 unit barang jadi
+  product    Item    @relation("BomProduct", fields: [productId], references: [id], onDelete: Cascade)
+  material   Item    @relation("BomMaterial", fields: [materialId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, materialId])
+  @@map("bom_lines")
 }
