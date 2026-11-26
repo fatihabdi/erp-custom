@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  DIREKTUR
+  ADMIN
+  MARKETING
+  GUDANG
+  KEUANGAN
+}
+
+// Jenis dokumen bernomor. Penawaran (SPH) memakai tanggal terbit,
+// sisanya berurutan per tahun.
+enum DocType {
+  SPH // Surat Penawaran Harga
+  KO // Konfirmasi Order
+  INV // Invoice
+  KW // Kwitansi
+}
+
+model Company {
+  id            String   @id @default(cuid())
+  code          String   @unique // GTF, SBA
+  name          String
+  address       String?
+  phone         String?
+  email         String?
+  ppnRate       Decimal  @default(0) @db.Decimal(5, 2) // GTF 0, SBA 11
+  bankName      String?
+  bankAccount   String?
+  bankHolder    String?
+  signatoryName  String?
+  signatoryTitle String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  users       UserCompany[]
+  sequences   DocumentSequence[]
+  numbers     DocumentNumber[]
+
+  @@map("companies")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role
+  active       Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  companies UserCompany[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+// Perusahaan yang boleh diakses seorang pengguna.
+model UserCompany {
+  userId    String
+  companyId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@map("user_companies")
+}
+
+// Penghitung nomor berurutan per perusahaan, jenis dokumen, dan tahun.
+model DocumentSequence {
+  companyId String
+  docType   DocType
+  year      Int
+  last      Int     @default(0)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, docType, year])
+  @@map("document_sequences")
+}
+
+// Nomor dokumen yang sudah terbit; unik per perusahaan dan jenis,
+// dipakai untuk mendeteksi bentrok nomor di hari yang sama (akhiran -2, -3, ...).
+model DocumentNumber {
+  id        String   @id @default(cuid())
+  companyId String
+  docType   DocType
+  number    String
+  issuedAt  DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, docType, number])
+  @@map("document_numbers")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String?
+  entityId  String?
+  detail    Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
