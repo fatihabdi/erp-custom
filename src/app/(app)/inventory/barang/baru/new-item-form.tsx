@@ -30,6 +30,11 @@ export function NewItemForm({ kind }: { kind: "RAW" | "FINISHED" }) {
         <Input id="minStock" name="minStock" inputMode="decimal" defaultValue="0" />
       </div>
       <div className="flex flex-col gap-1.5 sm:col-span-2">
+        <Label htmlFor="unitCost">Harga pokok per satuan (Rp)</Label>
+        <Input id="unitCost" name="unitCost" inputMode="decimal" defaultValue="0" />
+        <p className="text-xs text-muted-foreground">Dipakai menghitung biaya bahan proyek saat bahan dikeluarkan.</p>
+      </div>
+      <div className="flex flex-col gap-1.5 sm:col-span-2">
         <Label htmlFor="notes">Catatan</Label>
         <Input id="notes" name="notes" maxLength={300} />
       </div>

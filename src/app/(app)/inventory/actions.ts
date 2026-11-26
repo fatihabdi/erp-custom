@@ -53,6 +53,7 @@ const itemSchema = z.object({
   name: z.string().trim().min(1, "Nama wajib diisi").max(120),
   unit: z.string().trim().min(1, "Satuan wajib diisi").max(20),
   minStock: numField.refine((n) => n >= 0, "Stok minimum tidak boleh negatif"),
+  unitCost: numField.refine((n) => n >= 0, "Harga pokok tidak boleh negatif"),
   notes: z.string().trim().max(300).optional(),
 });
 
@@ -60,7 +61,7 @@ export async function createItem(_: FormState, fd: FormData): Promise<FormState>
   const user = await requirePermission("inventory", "create");
   const parsed = itemSchema.safeParse({
     kind: fd.get("kind"), name: fd.get("name"), unit: fd.get("unit"),
-    minStock: fd.get("minStock") || "0", notes: fd.get("notes") || undefined,
+    minStock: fd.get("minStock") || "0", unitCost: fd.get("unitCost") || "0", notes: fd.get("notes") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
@@ -68,7 +69,7 @@ export async function createItem(_: FormState, fd: FormData): Promise<FormState>
   try {
     id = await db.$transaction(async (tx) => {
       const code = await nextItemCode(tx, d.kind);
-      const item = await tx.item.create({ data: { ...d, minStock: round3(d.minStock), code } });
+      const item = await tx.item.create({ data: { ...d, minStock: round3(d.minStock), unitCost: Math.round(d.unitCost * 100) / 100, code } });
       return item.id;
     });
   } catch (e) {
@@ -83,13 +84,14 @@ export async function updateItem(_: FormState, fd: FormData): Promise<FormState>
   const user = await requirePermission("inventory", "edit");
   const id = String(fd.get("id"));
   const parsed = itemSchema.omit({ kind: true }).safeParse({
-    name: fd.get("name"), unit: fd.get("unit"), minStock: fd.get("minStock") || "0", notes: fd.get("notes") || undefined,
+    name: fd.get("name"), unit: fd.get("unit"), minStock: fd.get("minStock") || "0", unitCost: fd.get("unitCost") || "0",
+    notes: fd.get("notes") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   await db.item.update({
     where: { id },
-    data: { name: d.name, unit: d.unit, minStock: round3(d.minStock), notes: d.notes ?? null, active: fd.get("active") === "on" },
+    data: { name: d.name, unit: d.unit, minStock: round3(d.minStock), unitCost: Math.round(d.unitCost * 100) / 100, notes: d.notes ?? null, active: fd.get("active") === "on" },
   });
   await db.auditLog.create({ data: { userId: user.id, action: "item.update", entity: "Item", entityId: id } });
   revalidatePath("/inventory");

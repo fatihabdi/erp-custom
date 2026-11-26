@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { allowedModules, ROLE_LABEL } from "@/lib/permissions";
+import { allowedModules, can, ROLE_LABEL } from "@/lib/permissions";
 import { logout } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
 
@@ -19,7 +19,7 @@ const MENU: Record<string, string> = {
 };
 
 // Hanya modul yang sudah ada halamannya yang ditautkan.
-const READY = new Set(["dashboard", "inventory", "pengguna"]);
+const READY = new Set(["dashboard", "proyek", "inventory", "pengguna"]);
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -39,6 +39,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 {MENU[m]}
               </span>
             ),
+          )}
+          {can(user.role, "order", "view") && (
+            <Link href="/pelanggan" className="rounded-lg px-3 py-2 text-sm hover:bg-muted">Pelanggan</Link>
           )}
         </nav>
         <div className="border-t border-border pt-3 text-sm">
