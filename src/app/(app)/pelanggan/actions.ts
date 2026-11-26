@@ -28,7 +28,7 @@ export async function createCustomer(_: FormState, fd: FormData): Promise<FormSt
   await db.auditLog.create({ data: { userId: user.id, action: "pelanggan.create", entity: "Customer", entityId: c.id } });
   revalidatePath("/pelanggan");
   const next = String(fd.get("next") ?? "");
-  redirect(next.startsWith("/proyek/baru") ? `${next}${next.includes("?") ? "&" : "?"}pelanggan=${c.id}` : "/pelanggan");
+  redirect(/^\/(proyek|penawaran)\/baru/.test(next) ? `${next}${next.includes("?") ? "&" : "?"}pelanggan=${c.id}` : "/pelanggan");
 }
 
 export async function updateCustomer(_: FormState, fd: FormData): Promise<FormState> {

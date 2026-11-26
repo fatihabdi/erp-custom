@@ -10,6 +10,8 @@ import {
   STAGE_LABEL, STAGE_STATUS_LABEL, type StageName,
 } from "@/lib/production";
 import { daysUntil, fmtDate, fmtDateLong, fmtRp, toDateInput } from "@/lib/format";
+import { paidOf } from "@/lib/documents";
+import { paymentState } from "@/lib/billing";
 import { ActionForm } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +64,16 @@ export default async function ProyekDetailPage({
   const committed = new Map<string, number>();
   for (const d of p.deliveries.filter((d) => d.status !== "BATAL")) for (const l of d.lines) committed.set(l.lineId, (committed.get(l.lineId) ?? 0) + l.qty);
 
+  // Dokumen penagihan proyek pesanan: KO, invoice, dan status pembayaran.
+  const docs = order && can(user.role, "invoice", "view")
+    ? {
+        so: await db.salesOrder.findUnique({ where: { projectId: p.id }, select: { id: true, number: true } }),
+        invoices: await db.invoice.findMany({ where: { projectId: p.id, status: "TERBIT" }, orderBy: { createdAt: "asc" }, include: { payments: true } }),
+      }
+    : null;
+  const billed = docs?.invoices.reduce((n, i) => n + Number(i.total), 0) ?? 0;
+  const paidAll = docs?.invoices.reduce((n, i) => n + paidOf(i.payments), 0) ?? 0;
+
   const tabHref = (t: string) => `/proyek/${p.id}${t === "produksi" ? "" : `?tab=${t}`}`;
   const statusBadge = { BERJALAN: cur ? `Dikerjakan · ${STAGE_LABEL[cur]}` : "Dikerjakan", SELESAI: "Selesai", BATAL: "Dibatalkan" }[p.status];
 
@@ -99,6 +111,33 @@ export default async function ProyekDetailPage({
           hint={due === null ? "Belum ditentukan" : due < 0 ? `Lewat ${-due} hari` : `${due} hari lagi`} />
         <Stat title="Progres" value={`${pct}%`} hint={cur ? `Tahap ${STAGE_LABEL[cur]}` : p.status === "SELESAI" ? "Semua tahap selesai" : "—"} />
       </div>
+
+      {docs && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Dokumen & pembayaran</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Ditagih {fmtRp(billed)} dari {fmtRp(totals.total)} · dibayar {fmtRp(paidAll)} · piutang {fmtRp(Math.max(0, billed - paidAll))}
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2 text-sm">
+            {docs.so ? (
+              <p>Konfirmasi Order: <Link href={`/order/${docs.so.id}`} className="font-medium underline">{docs.so.number}</Link></p>
+            ) : can(user.role, "order", "create") && p.status !== "BATAL" ? (
+              <p><Link href={`/order/baru?proyek=${p.id}`} className="font-medium underline">Buat Konfirmasi Order</Link> untuk proyek ini lebih dulu sebelum menagih.</p>
+            ) : <p className="text-muted-foreground">Belum ada Konfirmasi Order.</p>}
+            {docs.invoices.map((i) => {
+              const st = paymentState(Number(i.total), paidOf(i.payments));
+              return (
+                <p key={i.id}>
+                  <Link href={`/invoice/${i.id}`} className="underline">{i.number}</Link> · {fmtRp(Number(i.total))}{" "}
+                  <Badge variant={st === "LUNAS" ? "default" : "outline"}>{st === "LUNAS" ? "Lunas" : st === "SEBAGIAN" ? "Sebagian" : "Belum bayar"}</Badge>
+                </p>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <TabsNav items={[
         { href: tabHref("produksi"), label: "Produksi", active: tab === "produksi" },
