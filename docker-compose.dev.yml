@@ -1,0 +1,14 @@
+# Hanya database untuk pengembangan lokal:  docker compose -f docker-compose.dev.yml up -d
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: erp
+      POSTGRES_PASSWORD: erp
+      POSTGRES_DB: erp
+    volumes:
+      - devdata:/var/lib/postgresql/data
+volumes:
+  devdata:
