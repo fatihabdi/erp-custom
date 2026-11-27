@@ -15,10 +15,6 @@ export default async function PenawaranBaruPage({ searchParams }: { searchParams
     .map((c) => ({ id: c.id, code: c.code, name: c.name, ppnRate: Number(c.ppnRate) }));
   return (
     <div className="flex max-w-6xl flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Penawaran baru</h1>
-        <p className="text-sm text-muted-foreground">GTF tanpa PPN, SBA dengan PPN 11% otomatis</p>
-      </div>
       <QuotationForm companies={allowed} customers={customers} products={products} defaultDate={toDateInput(new Date())} defaultCustomerId={sp.pelanggan} />
     </div>
   );
