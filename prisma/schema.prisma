@@ -13,6 +13,8 @@ enum Role {
   MARKETING
   GUDANG
   KEUANGAN
+  KETUA_KAYU // Ketua Produksi Kayu
+  KETUA_BESI // Ketua Produksi Besi
 }
 
 // Jenis dokumen bernomor. Penawaran (SPH) memakai tanggal terbit,
@@ -65,6 +67,7 @@ model Company {
   logo       CompanyLogo?
   quotations Quotation[]
   orders     SalesOrder[]
+  productionOrders ProductionOrder[]
   invoices   Invoice[]
   assets     Asset[]
 
@@ -288,6 +291,7 @@ model Project {
   terms      PaymentTerm[]
   salesOrder SalesOrder?
   invoices   Invoice[]
+  productionOrder ProductionOrder?
 
   @@index([status, dueDate])
   @@index([kind, status])
@@ -311,6 +315,7 @@ model ProjectLine {
   issues    MaterialIssue[]
   qcs       QcRecord[]
   delivered DeliveryLine[]
+  soLine    ProductionOrderLine?
 
   @@index([projectId])
   @@map("project_lines")
@@ -533,9 +538,61 @@ model SalesOrder {
   company   Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
   project   Project    @relation(fields: [projectId], references: [id], onDelete: Restrict)
   quotation Quotation? @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  production ProductionOrder?
 
   @@unique([companyId, number])
   @@map("sales_orders")
+}
+
+// Sales Order (SO): tampilan acuan produksi yang terbit otomatis bersama Konfirmasi Order.
+// Dilihat Ketua Produksi Kayu, Ketua Produksi Besi, dan Gudang (packing). Tanpa harga.
+// Pemesan, alamat, dan tanggal kirim dibaca langsung dari KO dan proyek, jadi tidak bisa berbeda.
+// (Model ini bernama ProductionOrder karena SalesOrder di atas sudah dipakai untuk KO.)
+model ProductionOrder {
+  id        String   @id @default(cuid())
+  companyId String
+  projectId String   @unique
+  orderId   String   @unique // KO asalnya
+  number    String // GTF-024/SO/X/2026 (nomor KO dengan KO diganti SO)
+  notes     String? // catatan untuk produksi
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  project Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  order   SalesOrder           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  lines   ProductionOrderLine[]
+
+  @@unique([companyId, number])
+  @@map("production_orders")
+}
+
+// Satu barang pada SO. Jumlah dan satuan mengikuti baris proyek; judul dan spesifikasi boleh diubah.
+model ProductionOrderLine {
+  id            String  @id @default(cuid())
+  orderId       String
+  projectLineId String  @unique
+  sort          Int     @default(0)
+  title         String // nama barang seperti tertulis di penawaran
+  spec          String? // ukuran, bahan, finishing (teks bebas, satu baris per butir)
+
+  order       ProductionOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  projectLine ProjectLine          @relation(fields: [projectLineId], references: [id], onDelete: Cascade)
+  image       ProductionOrderImage?
+
+  @@index([orderId])
+  @@map("production_order_lines")
+}
+
+// Gambar acuan per barang, disimpan terpisah seperti logo supaya tidak ikut terbaca di setiap query.
+model ProductionOrderImage {
+  lineId    String              @id
+  data      Bytes
+  mime      String // image/png atau image/jpeg
+  updatedAt DateTime            @updatedAt
+  line      ProductionOrderLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+
+  @@map("production_order_images")
 }
 
 // Invoice: satu per termin. Jumlah dibekukan saat terbit.

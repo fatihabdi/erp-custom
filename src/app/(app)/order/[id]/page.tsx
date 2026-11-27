@@ -23,7 +23,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const o = await db.salesOrder.findUnique({
     where: { id },
     include: {
-      company: true, quotation: { select: { id: true, number: true } },
+      company: true, quotation: { select: { id: true, number: true } }, production: { select: { id: true, number: true } },
       project: {
         include: {
           customer: true, terms: { orderBy: { seq: "asc" } },
@@ -56,6 +56,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
           <p className="text-sm text-muted-foreground">
             {p.customer?.name} · {fmtDateLong(o.date)} · proyek <Link href={`/proyek/${p.id}`} className="underline">{p.code}</Link>
+            {o.production && can(user.role, "sales-order", "view") && <> · <Link href={`/sales-order/${o.production.id}`} className="underline">Sales Order {o.production.number}</Link></>}
             {o.quotation && <> · dari penawaran <Link href={`/penawaran/${o.quotation.id}`} className="underline">{o.quotation.number}</Link></>}
           </p>
         </div>

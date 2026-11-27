@@ -1,5 +1,5 @@
 // Hak akses per peran. Satu sumber kebenaran untuk menu, halaman, dan aksi server.
-export const ROLES = ["DIREKTUR", "ADMIN", "MARKETING", "GUDANG", "KEUANGAN"] as const;
+export const ROLES = ["DIREKTUR", "ADMIN", "MARKETING", "GUDANG", "KEUANGAN", "KETUA_KAYU", "KETUA_BESI"] as const;
 export type RoleName = (typeof ROLES)[number];
 
 export const ROLE_LABEL: Record<RoleName, string> = {
@@ -8,12 +8,15 @@ export const ROLE_LABEL: Record<RoleName, string> = {
   MARKETING: "Marketing",
   GUDANG: "Gudang",
   KEUANGAN: "Keuangan",
+  KETUA_KAYU: "Ketua Produksi Kayu",
+  KETUA_BESI: "Ketua Produksi Besi",
 };
 
 export const MODULES = [
   "dashboard",
   "penawaran",
   "order",
+  "sales-order",
   "proyek",
   "inventory",
   "invoice",
@@ -35,25 +38,40 @@ type Matrix = Record<RoleName, Partial<Record<ModuleName, Action[]>>>;
 
 export const PERMISSIONS: Matrix = {
   DIREKTUR: {
-    dashboard: ALL, penawaran: ALL, order: ALL, proyek: ALL, inventory: ALL,
+    dashboard: ALL, penawaran: ALL, order: ALL, "sales-order": ALL, proyek: ALL, inventory: ALL,
     invoice: ALL, kwitansi: ALL, aset: ALL, laporan: ALL, pengguna: ALL, pengaturan: ALL,
   },
   ADMIN: {
-    dashboard: READ, penawaran: WRITE, order: WRITE, proyek: WRITE, inventory: WRITE,
+    dashboard: READ, penawaran: WRITE, order: WRITE, "sales-order": WRITE, proyek: WRITE, inventory: WRITE,
     invoice: WRITE, kwitansi: WRITE, aset: WRITE, laporan: READ, pengguna: ALL, pengaturan: WRITE,
   },
   MARKETING: {
-    dashboard: READ, penawaran: WRITE, order: WRITE, proyek: READ, inventory: READ,
+    dashboard: READ, penawaran: WRITE, order: WRITE, "sales-order": WRITE, proyek: READ, inventory: READ,
     invoice: READ,
   },
   GUDANG: {
-    dashboard: READ, proyek: READ, inventory: WRITE, aset: WRITE,
+    dashboard: READ, "sales-order": READ, proyek: READ, inventory: WRITE, aset: WRITE,
   },
   KEUANGAN: {
     dashboard: READ, penawaran: READ, order: READ, proyek: READ, inventory: READ,
     invoice: WRITE, kwitansi: WRITE, laporan: READ,
   },
+  // Ketua produksi hanya melihat Sales Order (acuan kerja) dan memperbarui tahapnya sendiri.
+  // Tanpa akses dashboard, proyek, invoice, atau stok, jadi harga dan biaya tidak terlihat.
+  KETUA_KAYU: { "sales-order": READ },
+  KETUA_BESI: { "sales-order": READ },
 };
+
+// Tahap produksi yang boleh diperbarui peran tertentu di halaman Sales Order, selain pemegang hak edit proyek.
+export const STAGE_OWNERS: Partial<Record<RoleName, readonly string[]>> = {
+  KETUA_KAYU: ["POTONG_KAYU"],
+  KETUA_BESI: ["RANGKA_BESI"],
+};
+
+/** Boleh memperbarui progres tahap ini? Pemegang hak edit proyek boleh semua; ketua produksi hanya tahapnya. */
+export function canUpdateStage(role: RoleName, stage: string): boolean {
+  return can(role, "proyek", "edit") || (can(role, "sales-order", "view") && (STAGE_OWNERS[role]?.includes(stage) ?? false));
+}
 
 export function can(role: RoleName, module: ModuleName, action: Action = "view"): boolean {
   return PERMISSIONS[role]?.[module]?.includes(action) ?? false;
@@ -61,4 +79,10 @@ export function can(role: RoleName, module: ModuleName, action: Action = "view")
 
 export function allowedModules(role: RoleName): ModuleName[] {
   return MODULES.filter((m) => can(role, m, "view"));
+}
+
+/** Halaman awal setelah masuk: Dashboard bila boleh, selain itu modul pertama yang boleh dilihat. */
+export function homePath(role: RoleName): string {
+  const m = allowedModules(role)[0];
+  return can(role, "dashboard") || !m ? "/dashboard" : `/${m}`;
 }

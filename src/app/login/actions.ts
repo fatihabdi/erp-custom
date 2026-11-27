@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { homePath, type RoleName } from "@/lib/permissions";
 import { createSession, destroySession } from "@/lib/session";
 
 const schema = z.object({ email: z.string().email(), password: z.string().min(1) });
@@ -28,7 +29,7 @@ export async function login(_: LoginState, formData: FormData): Promise<LoginSta
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   await db.auditLog.create({ data: { userId: user.id, action: "login" } });
   await createSession(user.id);
-  redirect("/dashboard");
+  redirect(homePath(user.role as RoleName));
 }
 
 export async function logout() {
