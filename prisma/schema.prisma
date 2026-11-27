@@ -66,6 +66,7 @@ model Company {
   quotations Quotation[]
   orders     SalesOrder[]
   invoices   Invoice[]
+  assets     Asset[]
 
   @@map("companies")
 }
@@ -592,4 +593,107 @@ model Payment {
   @@index([invoiceId])
   @@index([date])
   @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Modul Aset (mesin, kendaraan, peralatan)
+// ---------------------------------------------------------------------------
+
+enum AssetType {
+  MESIN
+  KENDARAAN
+  PERALATAN
+}
+
+enum AssetStatus {
+  AKTIF
+  PERAWATAN // sedang diservis/diperbaiki
+  RUSAK
+  DIJUAL // akhir: sudah dijual
+  DIHAPUSKAN // akhir: dihapuskan/afkir
+}
+
+enum MaintenanceType {
+  RUTIN // perawatan berkala
+  SERVIS
+  PERBAIKAN
+}
+
+// Kategori aset beserta umur manfaat bawaan untuk penyusutan garis lurus.
+model AssetCategory {
+  id               String    @id @default(cuid())
+  name             String    @unique
+  type             AssetType
+  usefulLifeMonths Int       @default(0) // 0 = tidak disusutkan
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+
+  assets Asset[]
+
+  @@map("asset_categories")
+}
+
+model Asset {
+  id               String      @id @default(cuid())
+  code             String      @unique // MSN-001, KDR-001, PRL-001
+  companyId        String
+  categoryId       String
+  name             String
+  brand            String?
+  serialNumber     String? // no. seri / no. rangka / no. polisi
+  location         String?
+  status           AssetStatus @default(AKTIF)
+  acquiredAt       DateTime    @db.Date
+  acquisitionCost  Decimal     @db.Decimal(16, 2)
+  salvageValue     Decimal     @default(0) @db.Decimal(16, 2) // nilai sisa
+  usefulLifeMonths Int         @default(0) // 0 = tidak disusutkan
+  disposedAt       DateTime?   @db.Date
+  disposalValue    Decimal?    @db.Decimal(16, 2) // hasil penjualan
+  notes            String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  category    AssetCategory      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  maintenance AssetMaintenance[]
+  assignments AssetAssignment[]
+
+  @@index([companyId, status])
+  @@index([categoryId])
+  @@map("assets")
+}
+
+// Riwayat perawatan/servis. Tidak diubah setelah dicatat (koreksi = hapus lalu catat ulang oleh Direktur).
+model AssetMaintenance {
+  id          String          @id @default(cuid())
+  assetId     String
+  type        MaintenanceType
+  performedAt DateTime        @db.Date
+  cost        Decimal         @default(0) @db.Decimal(16, 2)
+  vendor      String?
+  description String
+  nextDueAt   DateTime?       @db.Date // jadwal perawatan berikutnya
+  userId      String?
+  createdAt   DateTime        @default(now())
+  asset       Asset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, performedAt])
+  @@index([nextDueAt])
+  @@map("asset_maintenance")
+}
+
+// Penugasan aset ke orang/bagian. Satu aset hanya punya satu penugasan terbuka (returnedAt kosong).
+model AssetAssignment {
+  id         String    @id @default(cuid())
+  assetId    String
+  assignee   String // nama penanggung jawab atau bagian
+  assignedAt DateTime  @db.Date
+  returnedAt DateTime? @db.Date
+  note       String?
+  userId     String?
+  createdAt  DateTime  @default(now())
+  asset      Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, assignedAt])
+  @@map("asset_assignments")
 }
