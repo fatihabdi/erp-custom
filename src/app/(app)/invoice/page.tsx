@@ -60,7 +60,7 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Invoice & pembayaran</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Invoice & pembayaran</h1>
           <p className="text-sm text-muted-foreground">Satu invoice per termin, pembayaran boleh sebagian</p>
         </div>
         {can(user.role, "invoice", "create") && <Button asChild><Link href="/invoice/baru">+ Buat invoice</Link></Button>}
@@ -69,16 +69,16 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total piutang</CardTitle><FileText className="size-4 text-muted-foreground" aria-hidden /></CardHeader>
-          <CardContent><div className="text-2xl font-semibold tabular-nums">{fmtRp(open.reduce((n, r) => n + r.left, 0))}</div><p className="mt-1 text-xs text-muted-foreground">{open.length} invoice belum lunas</p></CardContent>
+          <CardContent><div className="text-2xl font-bold tabular-nums">{fmtRp(open.reduce((n, r) => n + r.left, 0))}</div><p className="mt-1 text-xs text-muted-foreground">{open.length} invoice belum lunas</p></CardContent>
         </Card>
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Lewat jatuh tempo</CardTitle><FileText className="size-4 text-muted-foreground" aria-hidden /></CardHeader>
-          <CardContent><div className="text-2xl font-semibold tabular-nums">{fmtRp(late.reduce((n, r) => n + r.left, 0))}</div><p className="mt-1 text-xs text-muted-foreground">{late.length === 0 ? "Tidak ada" : `${late.length} invoice, terlambat sampai ${lateMax} hari`}</p></CardContent>
+          <CardContent><div className="text-2xl font-bold tabular-nums">{fmtRp(late.reduce((n, r) => n + r.left, 0))}</div><p className="mt-1 text-xs text-muted-foreground">{late.length === 0 ? "Tidak ada" : `${late.length} invoice, terlambat sampai ${lateMax} hari`}</p></CardContent>
         </Card>
         {receipts && (
           <Card>
             <CardHeader className="flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Diterima bulan ini</CardTitle><Banknote className="size-4 text-muted-foreground" aria-hidden /></CardHeader>
-            <CardContent><div className="text-2xl font-semibold tabular-nums">{fmtRp(received)}</div><p className="mt-1 text-xs text-muted-foreground">{receipts.length} kwitansi</p></CardContent>
+            <CardContent><div className="text-2xl font-bold tabular-nums">{fmtRp(received)}</div><p className="mt-1 text-xs text-muted-foreground">{receipts.length} kwitansi</p></CardContent>
           </Card>
         )}
       </div>
@@ -108,8 +108,9 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
                   <TD className="text-right tabular-nums">{fmtRp(total)}</TD>
                   <TD className="text-right tabular-nums">{fmtRp(left)}</TD>
                   <TD className="whitespace-nowrap">
-                    <Badge variant={state === "LUNAS" ? "default" : "outline"}>{state === "LUNAS" ? "Lunas" : state === "SEBAGIAN" ? "Dibayar sebagian" : "Menunggu bayar"}</Badge>
-                    {overdue && <Badge variant="secondary" className="ml-1">Lewat tempo</Badge>}
+                    {overdue
+                      ? <Badge dot="red">Lewat jatuh tempo</Badge>
+                      : <Badge dot={state === "LUNAS" ? "green" : state === "SEBAGIAN" ? "amber" : "black"}>{state === "LUNAS" ? "Lunas" : state === "SEBAGIAN" ? "Dibayar sebagian" : "Menunggu bayar"}</Badge>}
                   </TD>
                 </TR>
               ))}

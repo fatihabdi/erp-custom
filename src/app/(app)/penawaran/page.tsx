@@ -5,7 +5,7 @@ import { can } from "@/lib/permissions";
 import { orderAmounts } from "@/lib/billing";
 import { QUOTATION_LABEL } from "@/lib/documents";
 import { fmtDateLong, fmtRp } from "@/lib/format";
-import { CompanyBadge } from "@/components/doc-bits";
+import { CompanyBadge, QUOTE_TONE } from "@/components/doc-bits";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,7 +39,7 @@ export default async function PenawaranPage({ searchParams }: { searchParams: Pr
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Penawaran</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Penawaran</h1>
           <p className="text-sm text-muted-foreground">Surat penawaran harga (SPH) untuk pelanggan, dari draf sampai disetujui</p>
         </div>
         {can(user.role, "penawaran", "create") && <Button asChild><Link href="/penawaran/baru">+ Penawaran</Link></Button>}
@@ -68,7 +68,7 @@ export default async function PenawaranPage({ searchParams }: { searchParams: Pr
                     <TD>{r.customer.name}<div className="mt-0.5"><CompanyBadge code={r.company.code} ppnRate={Number(r.ppnRate)} /></div></TD>
                     <TD className="whitespace-nowrap">{fmtDateLong(r.date)}</TD>
                     <TD className="text-right tabular-nums">{fmtRp(total)}</TD>
-                    <TD><Badge variant={r.status === "DISETUJUI" ? "default" : r.status === "DRAFT" ? "outline" : "secondary"}>{QUOTATION_LABEL[r.status]}</Badge>{r.order && <span className="ml-2 text-xs text-muted-foreground">sudah KO</span>}</TD>
+                    <TD><Badge dot={QUOTE_TONE[r.status]}>{QUOTATION_LABEL[r.status]}</Badge>{r.order && <span className="ml-2 text-xs text-muted-foreground">sudah KO</span>}</TD>
                   </TR>
                 );
               })}

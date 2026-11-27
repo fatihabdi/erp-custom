@@ -78,7 +78,7 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Proyek</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Proyek</h1>
           <p className="text-sm text-muted-foreground">Semua proyek yang sedang dikerjakan, diurutkan dari tanggal kirim terdekat</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -139,7 +139,7 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
                     </TD>
                     <TD className="whitespace-nowrap">
                       {p.status === "SELESAI" ? "Selesai" : cur ? STAGE_LABEL[cur] : "—"}
-                      {held && <Badge variant="secondary" className="ml-2">Tertahan</Badge>}
+                      {held && <Badge dot="amber" className="ml-2">Tertahan</Badge>}
                     </TD>
                     <TD className="min-w-40">
                       <div className="flex items-center gap-2"><Progress value={pct} /><span className="w-10 text-right text-xs tabular-nums text-muted-foreground">{pct}%</span></div>
@@ -214,7 +214,7 @@ function Stat({ title, value, hint, icon }: { title: string; value: number; hint
         {icon}
       </CardHeader>
       <CardContent>
-        <div className="text-3xl font-semibold">{value}</div>
+        <div className="text-2xl font-bold">{value}</div>
         <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p>
       </CardContent>
     </Card>

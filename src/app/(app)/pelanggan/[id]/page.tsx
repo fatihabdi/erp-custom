@@ -18,8 +18,7 @@ export default async function PelangganDetailPage({ params }: { params: Promise<
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <div>
-        <p className="text-sm text-muted-foreground"><Link href="/pelanggan" className="hover:underline">Pelanggan</Link> / {c.name}</p>
-        <h1 className="text-2xl font-semibold">{c.name}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{c.name}</h1>
       </div>
       <Card>
         <CardHeader><CardTitle>Data pelanggan</CardTitle></CardHeader>

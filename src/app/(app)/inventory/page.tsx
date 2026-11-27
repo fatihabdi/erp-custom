@@ -47,7 +47,7 @@ export default async function InventoryPage({
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Stok</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Stok</h1>
           <p className="text-sm text-muted-foreground">Satu gudang untuk GTF dan SBA</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -111,7 +111,7 @@ export default async function InventoryPage({
                       <TD className="text-right tabular-nums">{fmtQty(Number(i.onHand))}</TD>
                       <TD className="text-right tabular-nums">{fmtQty(Number(i.minStock))}</TD>
                       <TD>
-                        <Badge variant={s === "HABIS" ? "default" : s === "MENIPIS" ? "secondary" : "outline"}>
+                        <Badge dot={s === "HABIS" ? "red" : s === "MENIPIS" ? "amber" : "green"}>
                           {STATUS_LABEL[s]}
                         </Badge>
                       </TD>
@@ -161,7 +161,7 @@ function StatCard({ title, value, hint }: { title: string; value: number; hint: 
         <Box className="size-4 text-muted-foreground" aria-hidden />
       </CardHeader>
       <CardContent>
-        <div className="text-3xl font-semibold">{value}</div>
+        <div className="text-2xl font-bold">{value}</div>
         <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
       </CardContent>
     </Card>

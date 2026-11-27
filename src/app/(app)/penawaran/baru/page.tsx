@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { toDateInput } from "@/lib/format";
@@ -17,8 +16,7 @@ export default async function PenawaranBaruPage({ searchParams }: { searchParams
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <div>
-        <p className="text-sm text-muted-foreground"><Link href="/penawaran" className="hover:underline">Penawaran</Link> / Baru</p>
-        <h1 className="text-2xl font-semibold">Penawaran baru</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Penawaran baru</h1>
         <p className="text-sm text-muted-foreground">GTF tanpa PPN, SBA dengan PPN 11% otomatis</p>
       </div>
       <QuotationForm companies={allowed} customers={customers} products={products} defaultDate={toDateInput(new Date())} defaultCustomerId={sp.pelanggan} />

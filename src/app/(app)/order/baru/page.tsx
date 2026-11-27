@@ -16,8 +16,7 @@ export default async function OrderBaruPage({ searchParams }: { searchParams: Pr
   const scoped = user.companies.length > 0 ? { companyId: { in: user.companies.map((c) => c.id) } } : {};
   const head = (sub: string) => (
     <div>
-      <p className="text-sm text-muted-foreground"><Link href="/order" className="hover:underline">Konfirmasi Order</Link> / Baru</p>
-      <h1 className="text-2xl font-semibold">Konfirmasi Order baru</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Konfirmasi Order baru</h1>
       <p className="text-sm text-muted-foreground">{sub}</p>
     </div>
   );

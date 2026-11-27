@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
@@ -51,14 +50,13 @@ export default async function AsetDetailPage({ params }: { params: Promise<{ id:
     <div className="flex max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground"><Link href="/aset" className="hover:underline">Aset</Link> / {asset.code}</p>
-          <h1 className="text-2xl font-semibold">{asset.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{asset.name}</h1>
           <p className="text-sm text-muted-foreground">
             {asset.code} · {asset.company.code} · {TYPE_LABEL[asset.category.type as AssetTypeName]} — {asset.category.name}
             {asset.location ? ` · ${asset.location}` : ""}
           </p>
         </div>
-        <Badge variant={status === "AKTIF" ? "outline" : status === "RUSAK" ? "default" : "secondary"}>{STATUS_LABEL[status]}</Badge>
+        <Badge dot={status === "AKTIF" ? "green" : status === "RUSAK" ? "red" : status === "PERAWATAN" ? "amber" : "gray"}>{STATUS_LABEL[status]}</Badge>
       </div>
 
       {due && (
@@ -189,7 +187,7 @@ function Info({ title, value, hint }: { title: string; value: string; hint: stri
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{title}</CardTitle></CardHeader>
       <CardContent>
-        <div className="text-2xl font-semibold tabular-nums">{value}</div>
+        <div className="text-2xl font-bold tabular-nums">{value}</div>
         <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
       </CardContent>
     </Card>

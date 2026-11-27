@@ -36,17 +36,14 @@ export default async function BarangPage({ params }: { params: Promise<{ id: str
     <div className="flex max-w-4xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">
-            <Link href={`/inventory?tab=${item.kind === "RAW" ? "bahan" : "jadi"}`} className="hover:underline">Stok</Link> / {item.code}
-          </p>
-          <h1 className="text-2xl font-semibold">{item.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{item.name}</h1>
           <p className="text-sm text-muted-foreground">
             {item.kind === "RAW" ? "Bahan baku" : "Barang jadi"} · {item.code}{!item.active && " · Nonaktif"}
           </p>
         </div>
         <div className="text-right">
           <div className="text-3xl font-semibold tabular-nums">{fmtQty(onHand)} <span className="text-base font-normal text-muted-foreground">{item.unit}</span></div>
-          <Badge variant={s === "HABIS" ? "default" : s === "MENIPIS" ? "secondary" : "outline"}>{STATUS_LABEL[s]}</Badge>
+          <Badge dot={s === "HABIS" ? "red" : s === "MENIPIS" ? "amber" : "green"}>{STATUS_LABEL[s]}</Badge>
         </div>
       </div>
 

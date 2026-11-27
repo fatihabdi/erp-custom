@@ -81,15 +81,14 @@ export default async function ProyekDetailPage({
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground"><Link href="/proyek" className="hover:underline">Proyek</Link> / {p.code}</p>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold">{p.customer?.name ?? p.name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{p.customer?.name ?? p.name}</h1>
             {p.company ? (
               <Badge variant={Number(p.ppnRate) > 0 ? "default" : "outline"}>
                 {p.company.code} · {Number(p.ppnRate) > 0 ? `PPN ${Number(p.ppnRate)}%` : "Non-PPN"}
               </Badge>
             ) : <Badge variant="secondary">Stok internal</Badge>}
-            <Badge variant={p.status === "BERJALAN" ? "outline" : "secondary"}>{statusBadge}</Badge>
+            <Badge dot={p.status === "BERJALAN" ? "black" : p.status === "SELESAI" ? "green" : "gray"}>{statusBadge}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">{p.code}{p.customer ? ` · ${p.name}` : ""}{p.orderRef ? ` · ${p.orderRef}` : ""}</p>
         </div>
@@ -131,7 +130,7 @@ export default async function ProyekDetailPage({
               return (
                 <p key={i.id}>
                   <Link href={`/invoice/${i.id}`} className="underline">{i.number}</Link> · {fmtRp(Number(i.total))}{" "}
-                  <Badge variant={st === "LUNAS" ? "default" : "outline"}>{st === "LUNAS" ? "Lunas" : st === "SEBAGIAN" ? "Sebagian" : "Belum bayar"}</Badge>
+                  <Badge dot={st === "LUNAS" ? "green" : st === "SEBAGIAN" ? "amber" : "gray"}>{st === "LUNAS" ? "Lunas" : st === "SEBAGIAN" ? "Sebagian" : "Belum bayar"}</Badge>
                 </p>
               );
             })}
@@ -392,7 +391,7 @@ function DeliveryTable({ p, lines, canEdit }: { p: DeliveryProject; lines: { id:
           <TR key={d.id}>
             <TD className="whitespace-nowrap">#{d.seq} · {d.status === "TERKIRIM" && d.shippedAt ? fmtDate(d.shippedAt) : d.plannedDate ? fmtDate(d.plannedDate) : "—"}</TD>
             <TD>{d.lines.map((l) => `${l.qty} ${name.get(l.lineId)?.unit ?? ""} ${name.get(l.lineId)?.name ?? ""}`).join(", ")}</TD>
-            <TD><Badge variant={d.status === "TERKIRIM" ? "default" : d.status === "BATAL" ? "secondary" : "outline"}>{label[d.status]}</Badge></TD>
+            <TD><Badge dot={d.status === "TERKIRIM" ? "green" : d.status === "BATAL" ? "red" : "gray"}>{label[d.status]}</Badge></TD>
             {canEdit && (
               <TD>
                 {d.status === "RENCANA" && (

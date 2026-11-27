@@ -78,7 +78,7 @@ export default async function AsetPage({ searchParams }: { searchParams: Promise
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Aset</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Aset</h1>
           <p className="text-sm text-muted-foreground">Mesin, kendaraan, dan peralatan GTF dan SBA</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -149,7 +149,7 @@ export default async function AsetPage({ searchParams }: { searchParams: Promise
                     ) : "—"}
                   </TD>
                   <TD>
-                    <Badge variant={a.status === "AKTIF" ? "outline" : a.status === "RUSAK" ? "default" : "secondary"}>
+                    <Badge dot={a.status === "AKTIF" ? "green" : a.status === "RUSAK" ? "red" : a.status === "PERAWATAN" ? "amber" : "gray"}>
                       {STATUS_LABEL[a.status as AssetStatusName]}
                     </Badge>
                   </TD>
@@ -171,7 +171,7 @@ function Stat({ title, value, hint, icon }: { title: string; value: string; hint
         {icon && <Wrench className="size-4 text-muted-foreground" aria-hidden />}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-semibold tabular-nums">{value}</div>
+        <div className="text-2xl font-bold tabular-nums">{value}</div>
         <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
       </CardContent>
     </Card>

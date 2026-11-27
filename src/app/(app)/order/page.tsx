@@ -29,7 +29,7 @@ export default async function OrderPage({ searchParams }: { searchParams: Promis
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Konfirmasi Order</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Konfirmasi Order</h1>
           <p className="text-sm text-muted-foreground">Pesanan yang sudah dikonfirmasi; setiap KO terhubung ke satu proyek produksi</p>
         </div>
         {can(user.role, "order", "create") && <Button asChild><Link href="/order/baru">+ Konfirmasi Order</Link></Button>}
@@ -51,7 +51,7 @@ export default async function OrderPage({ searchParams }: { searchParams: Promis
                   <TD><Link href={`/proyek/${r.project.id}`} className="hover:underline">{r.project.code}</Link></TD>
                   <TD className="whitespace-nowrap">{fmtDateLong(r.date)}</TD>
                   <TD className="text-right tabular-nums">{fmtRp(orderAmounts(r.project.lines.map((l) => ({ qty: l.qty, unitPrice: Number(l.unitPrice) })), Number(r.project.ppnRate)).total)}</TD>
-                  <TD>{r.project.status === "BATAL" ? <Badge variant="secondary">Batal</Badge> : r.signedAt ? <Badge>Ditandatangani</Badge> : <Badge variant="outline">Menunggu TTD</Badge>}</TD>
+                  <TD>{r.project.status === "BATAL" ? <Badge dot="red">Batal</Badge> : r.signedAt ? <Badge dot="green">Ditandatangani</Badge> : <Badge dot="gray">Menunggu TTD</Badge>}</TD>
                 </TR>
               ))}
             </TBody>

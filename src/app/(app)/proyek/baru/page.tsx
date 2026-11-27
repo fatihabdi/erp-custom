@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -24,8 +23,7 @@ export default async function ProyekBaruPage({ searchParams }: { searchParams: P
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <p className="text-sm text-muted-foreground"><Link href="/proyek" className="hover:underline">Proyek</Link> / Baru</p>
-        <h1 className="text-2xl font-semibold">{order ? "Proyek baru" : "Order produksi internal"}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{order ? "Proyek baru" : "Order produksi internal"}</h1>
         <p className="text-sm text-muted-foreground">
           {order ? "Pesanan pelanggan. PPN mengikuti perusahaan." : "Produksi untuk stok, tanpa pelanggan. Hasil QC lulus masuk stok barang jadi."}
         </p>

@@ -48,9 +48,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     <div className="flex max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground"><Link href="/order" className="hover:underline">Konfirmasi Order</Link> / {o.number}</p>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold">{o.number}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{o.number}</h1>
             <CompanyBadge code={o.company.code} ppnRate={ppn} />
             {o.signedAt ? <Badge>Ditandatangani {fmtDateLong(o.signedAt)}</Badge> : <Badge variant="outline">Menunggu tanda tangan pemesan</Badge>}
             {p.status === "BATAL" && <Badge variant="secondary">Proyek dibatalkan</Badge>}
