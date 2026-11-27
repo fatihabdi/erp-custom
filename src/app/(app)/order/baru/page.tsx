@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { catalogProducts } from "@/lib/catalog";
 import { requirePermission } from "@/lib/auth";
 import { projectScope } from "@/lib/project-scope";
 import { orderAmounts } from "@/lib/billing";
@@ -20,7 +21,7 @@ export default async function OrderBaruPage({ searchParams }: { searchParams: Pr
       <p className="text-sm text-muted-foreground">{sub}</p>
     </div>
   );
-  const products = await db.item.findMany({ where: { kind: "FINISHED", active: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true } });
+  const products = await catalogProducts();
 
   if (sp.penawaran) {
     const q = await db.quotation.findFirst({

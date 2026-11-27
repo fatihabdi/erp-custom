@@ -15,7 +15,7 @@ import { terbilangRupiah } from "@/lib/terbilang";
 
 type Company = { id: string; code: string; name: string; ppnRate: number };
 type Customer = { id: string; name: string };
-type Product = { id: string; code: string; name: string; unit: string };
+type Product = { id: string; code: string; name: string; unit: string; price: number; spec: string; type: "PRODUKSI" | "DAGANG" };
 type Line = { description: string; spec: string; qty: string; unit: string; unitPrice: string; productId: string };
 
 export type QuotationInitial = {
@@ -57,9 +57,19 @@ export function QuotationForm({
   const order = orderAmounts(lines.map((l) => ({ qty: Number(l.qty) || 0, unitPrice: parseRp(l.unitPrice) })), company?.ppnRate ?? 0);
   const termSums = termAmounts(order, terms.map((t) => Number(t.percent.replace(",", ".")) || 0));
   const set = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+  // Memilih produk mengisi uraian, spesifikasi, satuan, dan harga dari katalog. Isian yang sudah diketik tidak ditimpa;
+  // harga katalog hanya acuan dan tetap bisa diubah per penawaran.
   const pick = (i: number, productId: string) => {
     const p = products.find((x) => x.id === productId);
-    set(i, p ? { productId, description: lines[i].description || p.name, unit: p.unit } : { productId: "" });
+    if (!p) return set(i, { productId: "" });
+    const prev = products.find((x) => x.id === lines[i].productId);
+    const priceUntouched = !lines[i].unitPrice || (prev && parseRp(lines[i].unitPrice) === prev.price);
+    set(i, {
+      productId, unit: p.unit,
+      description: lines[i].description || p.name,
+      spec: lines[i].spec || p.spec,
+      ...(priceUntouched ? { unitPrice: p.price > 0 ? fmtNum(p.price) : "" } : {}),
+    });
   };
   const cancelHref = initial ? `/penawaran/${initial.id}` : "/penawaran";
 
@@ -127,7 +137,7 @@ export function QuotationForm({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <CardTitle>Item</CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">Teks bebas, boleh dikaitkan ke katalog barang</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Pilih dari Master Produk (harga terisi otomatis, boleh diubah) atau ketik item custom tanpa katalog</p>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => setLines((ls) => [...ls, blank()])}>+ Tambah item</Button>
               </div>
@@ -145,9 +155,15 @@ export function QuotationForm({
                         <Input className={`${cell} font-medium`} aria-label="Uraian" placeholder="Uraian barang" value={l.description} onChange={(e) => set(i, { description: e.target.value })} required />
                         <Input className={`${cell} h-7 text-xs text-muted-foreground`} aria-label="Spesifikasi" placeholder="Spesifikasi (opsional)" value={l.spec} onChange={(e) => set(i, { spec: e.target.value })} />
                         <Select aria-label="Barang katalog" className={`${cell} h-7 text-xs text-muted-foreground`} value={l.productId} onChange={(e) => pick(i, e.target.value)}>
-                          <option value="">Tidak dikaitkan ke katalog</option>
+                          <option value="">Item custom (tanpa katalog)</option>
                           {products.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
                         </Select>
+                        {(() => {
+                          const p = products.find((x) => x.id === l.productId);
+                          return p && p.price !== parseRp(l.unitPrice) ? (
+                            <span className="px-2 text-xs text-muted-foreground">Harga katalog Rp {fmtNum(p.price)}, harga di penawaran ini berbeda</span>
+                          ) : null;
+                        })()}
                       </div>
                       <Input className={`${cell} text-right`} aria-label="Jumlah" placeholder="Qty" inputMode="numeric" value={l.qty} onChange={(e) => set(i, { qty: e.target.value })} required />
                       <Input className={cell} aria-label="Satuan" placeholder="Satuan" value={l.unit} onChange={(e) => set(i, { unit: e.target.value })} required />

@@ -19,6 +19,7 @@ export const MODULES = [
   "sales-order",
   "proyek",
   "inventory",
+  "produk",
   "invoice",
   "kwitansi",
   "aset",
@@ -38,24 +39,25 @@ type Matrix = Record<RoleName, Partial<Record<ModuleName, Action[]>>>;
 
 export const PERMISSIONS: Matrix = {
   DIREKTUR: {
-    dashboard: ALL, penawaran: ALL, order: ALL, "sales-order": ALL, proyek: ALL, inventory: ALL,
+    dashboard: ALL, penawaran: ALL, order: ALL, "sales-order": ALL, proyek: ALL, inventory: ALL, produk: ALL,
     invoice: ALL, kwitansi: ALL, aset: ALL, laporan: ALL, pengguna: ALL, pengaturan: ALL,
   },
   ADMIN: {
-    dashboard: READ, penawaran: WRITE, order: WRITE, "sales-order": WRITE, proyek: WRITE, inventory: WRITE,
+    dashboard: READ, penawaran: WRITE, order: WRITE, "sales-order": WRITE, proyek: WRITE, inventory: WRITE, produk: WRITE,
     invoice: WRITE, kwitansi: WRITE, aset: WRITE, laporan: READ, pengguna: ALL, pengaturan: WRITE,
   },
   MARKETING: {
-    dashboard: READ, penawaran: WRITE, order: WRITE, "sales-order": WRITE, proyek: READ, inventory: READ,
+    dashboard: READ, penawaran: WRITE, order: WRITE, "sales-order": WRITE, proyek: READ, inventory: READ, produk: READ,
     invoice: READ,
   },
   GUDANG: {
     dashboard: READ, "sales-order": READ, proyek: READ, inventory: WRITE, aset: WRITE,
   },
   KEUANGAN: {
-    dashboard: READ, penawaran: READ, order: READ, proyek: READ, inventory: READ,
+    dashboard: READ, penawaran: READ, order: READ, proyek: READ, inventory: READ, produk: READ,
     invoice: WRITE, kwitansi: WRITE, laporan: READ,
   },
+  // Master Produk memuat harga jual dan harga pokok, jadi Gudang dan Ketua Produksi tidak punya akses ke modul ini.
   // Ketua produksi hanya melihat Sales Order (acuan kerja) dan memperbarui tahapnya sendiri.
   // Tanpa akses dashboard, proyek, invoice, atau stok, jadi harga dan biaya tidak terlihat.
   KETUA_KAYU: { "sales-order": READ },
@@ -75,6 +77,11 @@ export function canUpdateStage(role: RoleName, stage: string): boolean {
 
 export function can(role: RoleName, module: ModuleName, action: Action = "view"): boolean {
   return PERMISSIONS[role]?.[module]?.includes(action) ?? false;
+}
+
+/** Harga pokok produk lebih sensitif dari harga jual: hanya Direktur, Admin, dan Keuangan. Marketing hanya melihat harga jual. */
+export function canSeeProductCost(role: RoleName): boolean {
+  return role === "DIREKTUR" || role === "ADMIN" || role === "KEUANGAN";
 }
 
 export function allowedModules(role: RoleName): ModuleName[] {

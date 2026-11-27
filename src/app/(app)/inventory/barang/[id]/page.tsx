@@ -16,7 +16,7 @@ import { ItemForm } from "./item-form";
 export default async function BarangPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requirePermission("inventory");
   const { id } = await params;
-  const item = await db.item.findUnique({ where: { id } });
+  const item = await db.item.findUnique({ where: { id }, include: { product: { select: { type: true } } } });
   if (!item) notFound();
   const canEdit = can(user.role, "inventory", "edit");
   const [moves, bom, materials, usedIn] = await Promise.all([
@@ -39,6 +39,7 @@ export default async function BarangPage({ params }: { params: Promise<{ id: str
           <h1 className="text-3xl font-bold tracking-tight">{item.name}</h1>
           <p className="text-sm text-muted-foreground">
             {item.kind === "RAW" ? "Bahan baku" : "Barang jadi"} · {item.code}{!item.active && " · Nonaktif"}
+            {item.productId && can(user.role, "produk") && <> · <Link href={`/produk/${item.productId}`} className="hover:underline">Lihat di Master Produk</Link></>}
           </p>
         </div>
         <div className="text-right">
@@ -51,7 +52,7 @@ export default async function BarangPage({ params }: { params: Promise<{ id: str
         <Card>
           <CardHeader><CardTitle>Data barang</CardTitle></CardHeader>
           <CardContent>
-            <ItemForm item={{ id: item.id, name: item.name, unit: item.unit, minStock: Number(item.minStock), unitCost: Number(item.unitCost), notes: item.notes ?? "", active: item.active }} />
+            <ItemForm linked={!!item.productId} item={{ id: item.id, name: item.name, unit: item.unit, minStock: Number(item.minStock), unitCost: Number(item.unitCost), notes: item.notes ?? "", active: item.active }} />
             <div className="mt-4 flex gap-2">
               <Button asChild variant="outline" size="sm"><Link href={`/inventory/mutasi/baru?barang=${item.id}`}>Catat mutasi</Link></Button>
             </div>
@@ -59,7 +60,7 @@ export default async function BarangPage({ params }: { params: Promise<{ id: str
         </Card>
       )}
 
-      {item.kind === "FINISHED" && (
+      {item.kind === "FINISHED" && item.product?.type !== "DAGANG" && (
         <Card>
           <CardHeader>
             <CardTitle>BOM (bahan per 1 {item.unit})</CardTitle>

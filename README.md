@@ -56,6 +56,14 @@ npm run dev
 npm test
 ```
 
+## Modul Master Produk — isi
+- Katalog semua produk (`Product`, menu **Master Produk**, `/produk`): kode `PRD-001`, nama, kategori (Sekolah / Kantor / Rumahan / Lainnya), tipe (**Produksi** dibuat sendiri, **Dagang** dibeli jadi), satuan, ukuran, bahan, spesifikasi, gambar, harga jual (belum PPN), harga pokok (diisi manual, tidak dihitung dari BOM), dan status aktif. Tiap varian ukuran/warna/bahan adalah produk tersendiri (tanpa tabel varian).
+- Modul **Stok** hanya mengelola stok. Tiap produk punya tepat satu barang jadi di Inventory (`Item.productId`); id barang itulah yang dipakai baris penawaran, proyek, dan mutasi stok, jadi saldo, riwayat mutasi, dan BOM tetap menempel di barang yang sama. Nama, satuan, dan status aktif barang mengikuti produk (`src/lib/product.ts`). Barang jadi baru dibuat dari Master Produk; menu Stok hanya menambah bahan baku.
+- Harga di katalog hanya acuan. Memilih produk di Penawaran mengisi uraian, spesifikasi, satuan, dan harga, dan semuanya boleh diubah; harga yang dipakai tersimpan di baris penawaran lalu terbawa ke KO, proyek, dan invoice. Item custom boleh diketik langsung di penawaran; saat KO terbit, item itu bisa dijadikan produk baru ("+ Buat produk baru dari item ini").
+- Produk dagang tidak punya BOM dan tidak melewati tahap produksi: tahap sampai packing langsung selesai saat proyek dibuat, QC tidak menambah stok, dan barang keluar dari stok saat dikirim (pembelian dicatat sebagai stok masuk). Produk dagang tidak boleh dipakai di produksi stok internal.
+- Hak akses: modul `produk` hanya untuk Direktur dan Admin (kelola), Marketing dan Keuangan (baca). Gudang dan Ketua Produksi tidak melihat harga sama sekali. Harga pokok hanya terlihat Direktur, Admin, dan Keuangan.
+- Migrasi `0007_master_produk` mengubah setiap barang jadi yang sudah ada menjadi produk (kode, nama, satuan, status dipertahankan; tipe Produksi, kategori Lainnya). Harga jual awal diambil dari harga terakhir di penawaran atau proyek pesanan (0 bila belum pernah dijual), harga pokok dari harga pokok barang. Stok dan BOM tidak disentuh.
+
 ## Produksi (VPS)
 ```bash
 cp .env.example .env   # isi POSTGRES_PASSWORD (karakter aman untuk URL), AUTH_SECRET, ADMIN_*, DOMAIN

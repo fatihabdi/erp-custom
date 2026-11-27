@@ -9,6 +9,7 @@ import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { TermsEditor } from "@/components/terms-editor";
 import { DEFAULT_TERMS, toRows, type OrderAmounts, type TermRow } from "@/lib/billing";
 import { fmtNum } from "@/lib/format";
+import { NEW_PRODUCT } from "@/lib/product";
 
 type Line = { id: string; description: string; qty: number; unit: string; unitPrice: number; productId: string | null };
 type Product = { id: string; code: string; name: string };
@@ -31,7 +32,7 @@ export function OrderForm({
 
       <Card>
         <CardHeader><CardTitle>Barang pesanan</CardTitle>
-          {source === "penawaran" && <p className="text-sm text-muted-foreground">Setiap barang harus terkait ke barang jadi di katalog agar proyek produksinya bisa dibuat.</p>}
+          {source === "penawaran" && <p className="text-sm text-muted-foreground">Setiap barang harus terkait ke produk di Master Produk agar proyek produksinya bisa dibuat. Item custom bisa langsung dijadikan produk baru.</p>}
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           {lines.map((l) => (
@@ -41,7 +42,8 @@ export function OrderForm({
               <span className="text-sm tabular-nums text-muted-foreground">{fmtNum(l.unitPrice)}</span>
               {source === "penawaran" && !l.productId ? (
                 <Select aria-label={`Barang katalog untuk ${l.description}`} value={map[l.id] ?? ""} required onChange={(e) => setMap({ ...map, [l.id]: e.target.value })}>
-                  <option value="" disabled>Pilih barang jadi…</option>
+                  <option value="" disabled>Pilih produk…</option>
+                  <option value={NEW_PRODUCT}>+ Buat produk baru dari item ini</option>
                   {products.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
                 </Select>
               ) : <span className="text-xs text-muted-foreground">{source === "penawaran" ? "Sudah terkait katalog" : ""}</span>}

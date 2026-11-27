@@ -113,9 +113,16 @@ export async function createProject(tx: Tx, input: NewProject) {
     customerId = customer.id;
     ppnRate = num(company.ppnRate);
   }
-  const products = await tx.item.findMany({ where: { id: { in: input.lines.map((l) => l.productId) } } });
+  const products = await tx.item.findMany({
+    where: { id: { in: input.lines.map((l) => l.productId) } }, include: { product: { select: { type: true } } },
+  });
   const ok = new Set(products.filter((p) => p.kind === "FINISHED" && p.active).map((p) => p.id));
   if (input.lines.some((l) => !ok.has(l.productId))) throw new ProjectRuleError("Barang harus berupa barang jadi yang aktif.");
+  // Produk dagang (dibeli jadi) tidak diproduksi: tahap produksinya langsung selesai dan barang keluar dari stok saat dikirim.
+  const dagang = new Set(products.filter((p) => p.product?.type === "DAGANG").map((p) => p.id));
+  if (input.kind === "STOK" && input.lines.some((l) => dagang.has(l.productId))) {
+    throw new ProjectRuleError("Produksi stok hanya untuk produk yang diproduksi, bukan produk dagang.");
+  }
 
   const year = (input.orderDate ?? new Date()).getFullYear();
   const prefix = input.kind === "ORDER" ? "PRY" : "STK";
@@ -139,7 +146,8 @@ export async function createProject(tx: Tx, input: NewProject) {
         create: input.lines.map((l, i) => ({
           productId: l.productId, qty: l.qty, sort: i,
           unitPrice: input.kind === "ORDER" ? (l.unitPrice ?? 0) : 0,
-          stages: { create: stages.map((stage) => ({ stage })) },
+          issuedUnits: dagang.has(l.productId) ? l.qty : 0,
+          stages: { create: stages.map((stage) => ({ stage, done: dagang.has(l.productId) && stage !== "KIRIM" ? l.qty : 0 })) },
         })),
       },
     },
