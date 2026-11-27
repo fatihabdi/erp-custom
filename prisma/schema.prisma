@@ -45,6 +45,7 @@ model Company {
   code           String   @unique // GTF, SBA
   name           String
   address        String?
+  city           String? // kota penandatanganan kwitansi
   phone          String?
   email          String?
   ppnRate        Decimal  @default(0) @db.Decimal(5, 2) // GTF 0, SBA 11
@@ -57,10 +58,14 @@ model Company {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  users     UserCompany[]
-  sequences DocumentSequence[]
-  numbers   DocumentNumber[]
-  projects  Project[]
+  users      UserCompany[]
+  sequences  DocumentSequence[]
+  numbers    DocumentNumber[]
+  projects   Project[]
+  logo       CompanyLogo?
+  quotations Quotation[]
+  orders     SalesOrder[]
+  invoices   Invoice[]
 
   @@map("companies")
 }
@@ -151,10 +156,11 @@ model Item {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  movements    StockMovement[]
-  bomLines     BomLine[]       @relation("BomProduct")
-  usedInBoms   BomLine[]       @relation("BomMaterial")
-  projectLines ProjectLine[]
+  movements      StockMovement[]
+  bomLines       BomLine[]       @relation("BomProduct")
+  usedInBoms     BomLine[]       @relation("BomMaterial")
+  projectLines   ProjectLine[]
+  quotationLines QuotationLine[]
 
   @@index([kind, active])
   @@map("items")
@@ -248,7 +254,8 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  projects Project[]
+  projects   Project[]
+  quotations Quotation[]
 
   @@index([name])
   @@map("customers")
@@ -277,6 +284,9 @@ model Project {
   lines      ProjectLine[]
   deliveries Delivery[]
   costs      ProjectCost[]
+  terms      PaymentTerm[]
+  salesOrder SalesOrder?
+  invoices   Invoice[]
 
   @@index([status, dueDate])
   @@index([kind, status])
@@ -400,4 +410,186 @@ model ProjectCost {
 
   @@index([projectId])
   @@map("project_costs")
+}
+
+// ---------------------------------------------------------------------------
+// Modul Dokumen (penawaran, konfirmasi order, invoice, kwitansi)
+// ---------------------------------------------------------------------------
+
+enum QuotationStatus {
+  DRAFT
+  TERKIRIM
+  DISETUJUI
+  DITOLAK
+  BATAL
+}
+
+enum InvoiceStatus {
+  TERBIT
+  BATAL
+}
+
+enum PaymentMethod {
+  TRANSFER
+  TUNAI
+  CEK_GIRO
+  LAIN
+}
+
+// Logo perusahaan disimpan terpisah supaya data besar tidak ikut terbaca di setiap query perusahaan.
+model CompanyLogo {
+  companyId String   @id
+  data      Bytes
+  mime      String // image/png atau image/jpeg
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_logos")
+}
+
+// Penawaran harga (SPH). Teks bebas; baris boleh dikaitkan ke barang jadi di katalog.
+model Quotation {
+  id          String          @id @default(cuid())
+  companyId   String
+  customerId  String
+  number      String // SBA.026/SPH/XI/2026
+  date        DateTime
+  attn        String? // u.p.
+  subject     String // perihal
+  // PPN dibekukan dari perusahaan saat penawaran dibuat.
+  ppnRate     Decimal         @default(0) @db.Decimal(5, 2)
+  notes       String? // satu catatan per baris
+  status      QuotationStatus @default(DRAFT)
+  createdById String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  company  Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  lines    QuotationLine[]
+  terms    PaymentTerm[]
+  order    SalesOrder?
+
+  @@unique([companyId, number])
+  @@index([status, date])
+  @@map("quotations")
+}
+
+model QuotationLine {
+  id          String  @id @default(cuid())
+  quotationId String
+  sort        Int     @default(0)
+  description String
+  spec        String?
+  qty         Int
+  unit        String
+  unitPrice   Decimal @db.Decimal(16, 2) // tanpa PPN
+  productId   String? // barang jadi di katalog; wajib saat diubah menjadi Konfirmasi Order
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   Item?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([quotationId])
+  @@map("quotation_lines")
+}
+
+// Termin pembayaran: milik penawaran, lalu disalin ke proyek saat menjadi Konfirmasi Order.
+model PaymentTerm {
+  id          String  @id @default(cuid())
+  quotationId String?
+  projectId   String?
+  seq         Int
+  label       String // DP, Termin 2, Pelunasan
+  trigger     String // Saat KO ditandatangani, Saat barang dikirim, ...
+  percent     Decimal @db.Decimal(5, 2)
+  dueDays     Int     @default(14) // jatuh tempo invoice, hari setelah terbit
+
+  quotation Quotation? @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  project   Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invoices  Invoice[]
+
+  @@index([quotationId])
+  @@index([projectId])
+  @@map("payment_terms")
+}
+
+// Konfirmasi Order (KO): satu per proyek. Barang dan harga mengikuti baris proyek.
+model SalesOrder {
+  id               String    @id @default(cuid())
+  companyId        String
+  projectId        String    @unique
+  quotationId      String?   @unique
+  number           String // GTF-024/KO/X/2026
+  date             DateTime
+  deliveryLocation String?
+  workDays         Int? // waktu pengerjaan (hari kerja)
+  notes            String? // satu catatan per baris
+  signedAt         DateTime? // KO ditandatangani pemesan
+  createdById      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  quotation Quotation? @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, number])
+  @@map("sales_orders")
+}
+
+// Invoice: satu per termin. Jumlah dibekukan saat terbit.
+model Invoice {
+  id          String        @id @default(cuid())
+  companyId   String
+  projectId   String
+  termId      String?
+  deliveryId  String? // pengiriman yang ditagih (untuk termin "saat barang dikirim")
+  number      String // GTF-024/INV/X/2026
+  date        DateTime
+  dueDate     DateTime
+  status      InvoiceStatus @default(TERBIT)
+  description String // mis. Uang muka (DP) pesanan GTF-012/KO/XI/2026
+  detail      String? // rincian barang
+  orderValue  Decimal       @db.Decimal(16, 2) // nilai order tanpa PPN
+  percent     Decimal       @db.Decimal(5, 2)
+  subtotal    Decimal       @db.Decimal(16, 2)
+  ppnRate     Decimal       @db.Decimal(5, 2)
+  ppn         Decimal       @db.Decimal(16, 2)
+  total       Decimal       @db.Decimal(16, 2)
+  voidReason  String?
+  createdById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  company  Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  project  Project      @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  term     PaymentTerm? @relation(fields: [termId], references: [id], onDelete: SetNull)
+  payments Payment[]
+
+  @@unique([companyId, number])
+  @@index([projectId])
+  @@index([status, dueDate])
+  @@map("invoices")
+}
+
+// Pembayaran diterima; setiap pembayaran menerbitkan satu kwitansi.
+model Payment {
+  id            String        @id @default(cuid())
+  invoiceId     String
+  receiptNumber String // GTF-22/KW/X/2026
+  date          DateTime
+  amount        Decimal       @db.Decimal(16, 2)
+  method        PaymentMethod @default(TRANSFER)
+  note          String?
+  balanceAfter  Decimal       @db.Decimal(16, 2) // sisa tagihan invoice setelah pembayaran ini
+  voidedAt      DateTime?
+  voidReason    String?
+  createdById   String?
+  createdAt     DateTime      @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([date])
+  @@map("payments")
 }

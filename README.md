@@ -34,7 +34,7 @@ Next.js (TypeScript) + Tailwind + komponen gaya shadcn/ui hitam-putih, PostgreSQ
 - Biaya dan margin: biaya bahan (otomatis dari stok atau pembelian langsung), tenaga kerja, lain-lain; margin = nilai tanpa PPN dikurangi biaya.
 - Semua perubahan satu proyek dikunci per proyek (advisory lock) sehingga dua permintaan bersamaan tidak melewati batas jumlah.
 - UI: `/proyek` (daftar berjalan / produksi stok / selesai, filter perusahaan, posisi tahapan semua proyek), `/proyek/baru`, `/proyek/[id]` (tab Produksi, Pengiriman, Biaya). Pembatalan proyek (hak `delete`, Direktur) hanya bila belum ada bahan, QC, atau kiriman.
-- Tidak termasuk: Penawaran, Konfirmasi Order, Invoice, Kwitansi, dan pembayaran (modul berikutnya).
+- Dokumen penagihan ada di modul Dokumen (di bawah); halaman proyek menampilkan KO, invoice, dan status pembayarannya.
 
 ## Pengembangan lokal
 ```bash
@@ -59,5 +59,16 @@ docker compose up -d --build
 ## Keputusan yang berlaku
 Barang jadi masuk stok saat QC lulus; satu gudang barang jadi; bahan baku juga dicatat; tanpa penyusutan aset dan tanpa PO untuk sekarang.
 
+## Modul Dokumen — isi
+- Alur: **Penawaran (SPH)** → **Konfirmasi Order (KO)** → **Invoice** (satu per termin) → **Pembayaran** → **Kwitansi** (terbit otomatis per pembayaran). KO bisa dibuat dari penawaran (proyek produksinya dibuat otomatis) atau dari proyek pesanan yang sudah ada.
+- Nomor memakai `issueDocNumber` (Tahap 0): SPH `SBA.026/SPH/XI/2026` (tanggal terbit, akhiran `-2` bila bentrok), KO/INV/KW berurutan per tahun `GTF-024/INV/X/2026`. Tanggal dan bulan mengikuti kalender WIB.
+- PPN mengikuti perusahaan (GTF 0%, SBA 11%) dan dibekukan di penawaran/proyek. Termin dihitung dalam sen: DPP dan PPN dibagi per persen, termin terakhir menyerap selisih, sehingga jumlah semua invoice selalu sama dengan nilai order (`src/lib/billing.ts`).
+- Skema pembayaran fleksibel: DP, termin, atau lunas (persen harus 100%, jatuh tempo per termin). Termin terkunci selama ada invoice terbit. Pembayaran boleh sebagian; kelebihan bayar ditolak (dikunci per invoice). Pembatalan invoice/kwitansi wajib beralasan dan nomornya tetap tercatat. Invoice bisa menagih satu pengiriman (rincian barang pengiriman tercetak).
+- Terbilang otomatis: `src/lib/terbilang.ts` (seribu, seratus, sebelas, dst.).
+- PDF dibuat di server dengan PDFKit (`src/lib/pdf/`), mengikuti desain acuan: `/api/dokumen/{penawaran|konfirmasi-order|invoice|kwitansi}/{id}` (`?unduh=1` untuk mengunduh). Pengguna yang dibatasi perusahaan hanya bisa membuka dokumen perusahaannya.
+- Data perusahaan per PT dapat diisi di `/pengaturan`: logo (PNG/JPEG ≤ 512 KB), alamat, kota, telepon, email, rekening, penandatangan. Yang masih kosong tercetak sebagai `[placeholder]` dan halaman dokumen menampilkan peringatan.
+- Hak akses: Marketing dan Admin menangani penawaran/KO; Keuangan dan Admin menangani invoice dan pembayaran; Direktur semuanya; Gudang tidak punya akses.
+- Build Docker: font bawaan PDFKit disertakan lewat `outputFileTracingIncludes` di `next.config.ts`.
+
 ## Berikutnya
-Modul dokumen: Penawaran, Konfirmasi Order, Invoice, Kwitansi (membuat proyek dari Konfirmasi Order, pembayaran).
+Dashboard (angka dari semua modul), laporan, dan aset.

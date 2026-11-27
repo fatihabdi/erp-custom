@@ -11,6 +11,12 @@ export function romanMonth(month: number): string {
 
 const pad3 = (n: number) => String(n).padStart(3, "0");
 
+/** Tanggal, bulan, dan tahun menurut kalender WIB, supaya nomor tidak bergeser di server berzona UTC. */
+export function wibParts(date: Date): { day: number; month: number; year: number } {
+  const d = new Date(date.getTime() + 7 * 3600_000);
+  return { day: d.getUTCDate(), month: d.getUTCMonth() + 1, year: d.getUTCFullYear() };
+}
+
 /**
  * Nomor dasar (tanpa akhiran bentrok).
  * - SPH berawalan tanggal terbit: GTF.018/SPH/XI/2026
@@ -23,10 +29,10 @@ export function formatDocNumber(opts: {
   sequence?: number;
 }): string {
   const { companyCode, docType, date, sequence } = opts;
-  const roman = romanMonth(date.getMonth() + 1);
-  const year = date.getFullYear();
+  const { day, month, year } = wibParts(date);
+  const roman = romanMonth(month);
   if (docType === "SPH") {
-    return `${companyCode}.${pad3(date.getDate())}/SPH/${roman}/${year}`;
+    return `${companyCode}.${pad3(day)}/SPH/${roman}/${year}`;
   }
   if (!sequence) throw new Error("sequence wajib untuk jenis dokumen berurutan");
   return `${companyCode}-${pad3(sequence)}/${docType}/${roman}/${year}`;
@@ -63,7 +69,7 @@ export async function issueDocNumber(
     return number;
   }
 
-  const year = date.getFullYear();
+  const year = wibParts(date).year;
   const seq = await tx.documentSequence.upsert({
     where: { companyId_docType_year: { companyId, docType, year } },
     create: { companyId, docType, year, last: 1 },

@@ -17,3 +17,12 @@ export function daysUntil(d: Date, now = new Date()): number {
 }
 /** Nilai untuk <input type="date">. */
 export const toDateInput = (d: Date | null | undefined) => (d ? new Date(d.getTime() + 7 * 3600_000).toISOString().slice(0, 10) : "");
+
+const dfull = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
+/** 26 November 2026 (dokumen resmi). */
+export const fmtDateFull = (d: Date) => dfull.format(d);
+const r0 = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 });
+const r2f = new Intl.NumberFormat("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** Angka rupiah tanpa awalan; sen hanya muncul bila ada. */
+export const fmtNum = (n: number) => (Number.isInteger(n) ? r0.format(n) : r2f.format(n));
+export const fmtRpFull = (n: number) => `Rp ${fmtNum(n)}`;

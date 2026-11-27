@@ -10,7 +10,7 @@ import {
 type Tx = Prisma.TransactionClient;
 const num = (d: Prisma.Decimal | number) => Number(d);
 
-async function lock(tx: Tx, key: string) {
+export async function lock(tx: Tx, key: string) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
 }
 
