@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { MANUAL_TYPES } from "@/lib/stock";
@@ -16,8 +15,7 @@ export default async function MutasiBaruPage({ searchParams }: { searchParams: P
   return (
     <div className="flex max-w-xl flex-col gap-6">
       <div>
-        <p className="text-sm text-muted-foreground"><Link href="/inventory" className="hover:underline">Stok</Link> / Mutasi baru</p>
-        <h1 className="text-2xl font-semibold">Mutasi stok</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Mutasi stok</h1>
       </div>
       <Card>
         <CardHeader><CardTitle>Catat mutasi</CardTitle></CardHeader>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type StatusTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 /** Tombol pratinjau dan unduh PDF dokumen. */
@@ -36,3 +36,8 @@ export function CompanyWarning({ companyCode, missing, canEdit }: { companyCode:
     </p>
   );
 }
+
+/** Warna titik status penawaran (lihat design system: Penawaran / KO). */
+export const QUOTE_TONE: Record<"DRAFT" | "TERKIRIM" | "DISETUJUI" | "DITOLAK" | "BATAL", StatusTone> = {
+  DRAFT: "gray", TERKIRIM: "black", DISETUJUI: "green", DITOLAK: "red", BATAL: "gray",
+};

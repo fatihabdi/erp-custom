@@ -22,7 +22,7 @@ export default async function KwitansiPage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Kwitansi</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Kwitansi</h1>
         <p className="text-sm text-muted-foreground">Terbit otomatis setiap kali pembayaran dicatat di invoice</p>
       </div>
       <form className="w-72"><Input name="q" defaultValue={q} placeholder="Cari kwitansi, invoice, pelanggan…" aria-label="Cari kwitansi" /></form>

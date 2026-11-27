@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -15,8 +14,7 @@ export default async function KategoriAsetPage() {
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <div>
-        <p className="text-sm text-muted-foreground"><Link href="/aset" className="hover:underline">Aset</Link> / Kategori</p>
-        <h1 className="text-2xl font-semibold">Kategori aset</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Kategori aset</h1>
         <p className="text-sm text-muted-foreground">Umur manfaat di sini menjadi nilai bawaan saat aset baru dibuat; tiap aset tetap bisa berbeda.</p>
       </div>
       <Card>

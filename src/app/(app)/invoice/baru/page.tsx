@@ -19,8 +19,7 @@ export default async function InvoiceBaruPage({ searchParams }: { searchParams: 
   const sp = await searchParams;
   const head = (sub: string) => (
     <div>
-      <p className="text-sm text-muted-foreground"><Link href="/invoice" className="hover:underline">Invoice</Link> / Baru</p>
-      <h1 className="text-2xl font-semibold">Invoice baru</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Invoice baru</h1>
       <p className="text-sm text-muted-foreground">{sub}</p>
     </div>
   );

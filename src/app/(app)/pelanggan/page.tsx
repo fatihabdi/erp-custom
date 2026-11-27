@@ -20,7 +20,7 @@ export default async function PelangganPage({ searchParams }: { searchParams: Pr
     <div className="flex max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Pelanggan</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Pelanggan</h1>
           <p className="text-sm text-muted-foreground">Dipakai bersama oleh GTF dan SBA</p>
         </div>
         {can(user.role, "order", "create") && <Button asChild><Link href="/pelanggan/baru">+ Pelanggan</Link></Button>}
@@ -38,7 +38,7 @@ export default async function PelangganPage({ searchParams }: { searchParams: Pr
                   <TD>{c.contact ?? "—"}</TD>
                   <TD>{c.phone ?? "—"}</TD>
                   <TD className="text-right tabular-nums">{c._count.projects}</TD>
-                  <TD><Badge variant={c.active ? "outline" : "secondary"}>{c.active ? "Aktif" : "Nonaktif"}</Badge></TD>
+                  <TD><Badge dot={c.active ? "green" : "gray"}>{c.active ? "Aktif" : "Nonaktif"}</Badge></TD>
                 </TR>
               ))}
             </TBody>

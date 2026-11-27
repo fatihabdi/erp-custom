@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { MOVEMENT_LABEL, type MovementTypeName } from "@/lib/stock";
@@ -36,8 +35,7 @@ export default async function MutasiPage({
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <div>
-        <p className="text-sm text-muted-foreground"><Link href="/inventory" className="hover:underline">Stok</Link> / Riwayat</p>
-        <h1 className="text-2xl font-semibold">Riwayat mutasi stok</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Riwayat mutasi stok</h1>
       </div>
       <form className="flex flex-wrap gap-2">
         <Select name="jenis" defaultValue={type ?? ""} className="w-56" aria-label="Jenis mutasi">

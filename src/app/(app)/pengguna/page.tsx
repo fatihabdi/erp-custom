@@ -23,7 +23,7 @@ export default async function PenggunaPage() {
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Pengguna</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Pengguna</h1>
       <Card>
         <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">

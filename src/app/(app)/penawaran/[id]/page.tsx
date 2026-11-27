@@ -8,7 +8,7 @@ import { QUOTATION_FLOW, QUOTATION_LABEL } from "@/lib/documents";
 import { fmtDateLong, fmtNum, fmtRpFull, toDateInput } from "@/lib/format";
 import { terbilangRupiah } from "@/lib/terbilang";
 import { ActionForm } from "@/components/action-form";
-import { CompanyBadge, CompanyWarning, missingCompanyFields, PdfLinks } from "@/components/doc-bits";
+import { CompanyBadge, CompanyWarning, missingCompanyFields, PdfLinks, QUOTE_TONE } from "@/components/doc-bits";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,8 +35,7 @@ export default async function PenawaranDetailPage({ params, searchParams }: { pa
     return (
       <div className="flex max-w-6xl flex-col gap-6">
         <div>
-          <p className="text-sm text-muted-foreground"><Link href={`/penawaran/${q.id}`} className="hover:underline">{q.number}</Link> / Ubah</p>
-          <h1 className="text-2xl font-semibold">Ubah penawaran</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Ubah penawaran</h1>
         </div>
         <QuotationForm
           companies={[{ id: q.company.id, code: q.company.code, name: q.company.name, ppnRate: Number(q.ppnRate) }]}
@@ -62,11 +61,10 @@ export default async function PenawaranDetailPage({ params, searchParams }: { pa
     <div className="flex max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground"><Link href="/penawaran" className="hover:underline">Penawaran</Link> / {q.number}</p>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold">{q.number}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{q.number}</h1>
             <CompanyBadge code={q.company.code} ppnRate={Number(q.ppnRate)} />
-            <Badge variant={q.status === "DISETUJUI" ? "default" : "secondary"}>{QUOTATION_LABEL[q.status]}</Badge>
+            <Badge dot={QUOTE_TONE[q.status]}>{QUOTATION_LABEL[q.status]}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">{q.customer.name} · {q.subject} · {fmtDateLong(q.date)}</p>
         </div>

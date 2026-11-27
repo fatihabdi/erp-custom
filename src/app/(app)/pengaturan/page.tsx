@@ -24,7 +24,7 @@ export default async function PengaturanPage() {
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Pengaturan</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Pengaturan</h1>
         <p className="text-sm text-muted-foreground">Data perusahaan yang tercetak di penawaran, konfirmasi order, invoice, dan kwitansi. Yang masih kosong tampil sebagai [tanda kurung] di PDF.</p>
       </div>
       {companies.map((c) => {

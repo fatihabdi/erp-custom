@@ -48,14 +48,13 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     <div className="flex max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground"><Link href="/invoice" className="hover:underline">Invoice</Link> / {inv.number}</p>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold">{inv.number}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{inv.number}</h1>
             <CompanyBadge code={inv.company.code} ppnRate={Number(inv.ppnRate)} />
-            {inv.status === "BATAL" ? <Badge variant="secondary">Dibatalkan</Badge> : (
+            {inv.status === "BATAL" ? <Badge dot="gray">Dibatalkan</Badge> : (
               <>
-                <Badge variant={state === "LUNAS" ? "default" : "outline"}>{state === "LUNAS" ? "Lunas" : state === "SEBAGIAN" ? "Dibayar sebagian" : "Menunggu bayar"}</Badge>
-                {overdue && <Badge variant="secondary">Lewat tempo {daysLate(inv.dueDate)} hari</Badge>}
+                <Badge dot={state === "LUNAS" ? "green" : state === "SEBAGIAN" ? "amber" : "black"}>{state === "LUNAS" ? "Lunas" : state === "SEBAGIAN" ? "Dibayar sebagian" : "Menunggu bayar"}</Badge>
+                {overdue && <Badge dot="red">Lewat tempo {daysLate(inv.dueDate)} hari</Badge>}
               </>
             )}
           </div>

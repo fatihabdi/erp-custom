@@ -14,8 +14,7 @@ export default async function AsetBaruPage() {
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <div>
-        <p className="text-sm text-muted-foreground"><Link href="/aset" className="hover:underline">Aset</Link> / Aset baru</p>
-        <h1 className="text-2xl font-semibold">Aset baru</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Aset baru</h1>
       </div>
       <Card>
         <CardHeader><CardTitle>Data aset</CardTitle></CardHeader>
