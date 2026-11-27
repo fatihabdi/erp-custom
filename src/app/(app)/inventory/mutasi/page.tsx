@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
+import { canSeeProductCost } from "@/lib/permissions";
 import { MOVEMENT_LABEL, type MovementTypeName } from "@/lib/stock";
-import { fmtDateTime, fmtQty, fmtSigned } from "@/lib/format";
+import { fmtDateLong, fmtQty, fmtRp, fmtSigned } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/input";
@@ -14,13 +15,13 @@ export default async function MutasiPage({
 }: {
   searchParams: Promise<{ jenis?: string; barang?: string }>;
 }) {
-  await requirePermission("inventory");
+  const user = await requirePermission("inventory");
   const sp = await searchParams;
   const type = TYPES.find((t) => t === sp.jenis);
   const [rows, items] = await Promise.all([
     db.stockMovement.findMany({
       where: { ...(type ? { type } : {}), ...(sp.barang ? { itemId: sp.barang } : {}) },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
       take: 200,
       include: { item: { select: { code: true, name: true, unit: true } } },
     }),
@@ -31,6 +32,12 @@ export default async function MutasiPage({
     select: { id: true, name: true },
   });
   const userName = new Map(users.map((u) => [u.id, u.name]));
+  const projects = await db.project.findMany({
+    where: { id: { in: [...new Set(rows.filter((r) => r.refType === "PROYEK" && r.refId).map((r) => r.refId!))] } },
+    select: { id: true, code: true },
+  });
+  const projectCode = new Map(projects.map((p) => [p.id, p.code]));
+  const showCost = canSeeProductCost(user.role);
 
   return (
     <div className="flex max-w-6xl flex-col gap-6">
@@ -53,7 +60,7 @@ export default async function MutasiPage({
           <Table>
             <THead>
               <TR>
-                <TH>Waktu</TH><TH>Barang</TH><TH>Jenis</TH><TH className="text-right">Jumlah</TH>
+                <TH>Tanggal</TH><TH>Barang</TH><TH>Jenis</TH><TH className="text-right">Jumlah</TH>
                 <TH className="text-right">Saldo</TH><TH>Catatan</TH><TH>Oleh</TH>
               </TR>
             </THead>
@@ -61,12 +68,20 @@ export default async function MutasiPage({
               {rows.length === 0 && <TR><TD colSpan={7} className="py-8 text-center text-muted-foreground">Tidak ada mutasi.</TD></TR>}
               {rows.map((m) => (
                 <TR key={m.id}>
-                  <TD className="whitespace-nowrap">{fmtDateTime(m.createdAt)}</TD>
+                  <TD className="whitespace-nowrap">{fmtDateLong(m.occurredAt)}</TD>
                   <TD>{m.item.code} — {m.item.name}</TD>
                   <TD>{MOVEMENT_LABEL[m.type as MovementTypeName]}</TD>
                   <TD className="text-right font-medium tabular-nums">{fmtSigned(Number(m.qty))} {m.item.unit}</TD>
                   <TD className="text-right tabular-nums">{fmtQty(Number(m.balanceAfter))}</TD>
-                  <TD className="text-muted-foreground">{m.note ?? "—"}</TD>
+                  <TD className="text-muted-foreground">
+                    {[
+                      m.note,
+                      m.reference && `Ref. ${m.reference}`,
+                      m.supplier && `Pemasok ${m.supplier}`,
+                      showCost && m.unitCost != null && `@ ${fmtRp(Number(m.unitCost))}`,
+                      m.refType === "PROYEK" && m.refId && projectCode.get(m.refId) && `Proyek ${projectCode.get(m.refId)}`,
+                    ].filter(Boolean).join(" · ") || "—"}
+                  </TD>
                   <TD>{m.userId ? userName.get(m.userId) ?? "—" : "Sistem"}</TD>
                 </TR>
               ))}

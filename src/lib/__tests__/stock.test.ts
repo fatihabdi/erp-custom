@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   bomRequirement, findShortages, kindAllowed, signedDelta, stockStatus, validateBomLines, StockRuleError,
+  countDifference, parseMoneyInput, parseMovementDate, validateMovementDate, weightedAverageCost,
 } from "../stock";
 
 describe("signedDelta", () => {
@@ -72,5 +73,59 @@ describe("BOM", () => {
     expect(() => validateBomLines([{ materialId: "a", qty: 1 }, { materialId: "a", qty: 2 }])).toThrow(StockRuleError);
     expect(() => validateBomLines([{ materialId: "a", qty: 0 }])).toThrow(StockRuleError);
     expect(() => validateBomLines([{ materialId: "a", qty: 1 }])).not.toThrow();
+  });
+});
+
+describe("weightedAverageCost", () => {
+  it("merata-ratakan dengan stok lama", () => {
+    expect(weightedAverageCost(10, 100, 10, 200)).toBe(150);
+    expect(weightedAverageCost(3, 10, 1, 14)).toBe(11);
+  });
+  it("stok lama kosong atau negatif mengikuti harga beli", () => {
+    expect(weightedAverageCost(0, 999, 5, 20)).toBe(20);
+    expect(weightedAverageCost(-2, 999, 5, 20)).toBe(20);
+  });
+  it("menolak harga atau jumlah tidak valid", () => {
+    expect(() => weightedAverageCost(1, 1, 0, 5)).toThrow(StockRuleError);
+    expect(() => weightedAverageCost(1, 1, 1, -5)).toThrow(StockRuleError);
+  });
+});
+
+describe("tanggal mutasi", () => {
+  const now = new Date("2026-11-27T06:00:00Z");
+  it("kosong atau hari ini = sekarang", () => {
+    expect(parseMovementDate("", now)).toBeUndefined();
+    expect(parseMovementDate("2026-11-27", now)).toBeUndefined();
+  });
+  it("tanggal lain dicatat pukul 12.00 WIB", () => {
+    expect(parseMovementDate("2026-11-20", now)?.toISOString()).toBe("2026-11-20T05:00:00.000Z");
+  });
+  it("menolak format salah", () => {
+    expect(() => parseMovementDate("20/11/2026", now)).toThrow(StockRuleError);
+  });
+  it("menolak tanggal masa depan", () => {
+    expect(() => validateMovementDate(new Date("2026-12-05T00:00:00Z"), now)).toThrow(StockRuleError);
+    expect(() => validateMovementDate(new Date("2026-11-26T00:00:00Z"), now)).not.toThrow();
+  });
+});
+
+describe("countDifference (stok opname)", () => {
+  it("selisih = hitung fisik - tercatat", () => {
+    expect(countDifference(20, 18)).toBe(-2);
+    expect(countDifference(1.5, 2)).toBe(0.5);
+  });
+  it("menolak tanpa selisih dan hasil negatif", () => {
+    expect(() => countDifference(5, 5)).toThrow(StockRuleError);
+    expect(() => countDifference(5, -1)).toThrow(StockRuleError);
+  });
+});
+
+describe("parseMoneyInput", () => {
+  it("memahami pemisah ribuan dan koma desimal", () => {
+    expect(parseMoneyInput("15.000")).toBe(15000);
+    expect(parseMoneyInput("1.250.000,50")).toBe(1250000.5);
+    expect(parseMoneyInput("12,5")).toBe(12.5);
+    expect(parseMoneyInput("15000")).toBe(15000);
+    expect(Number.isNaN(parseMoneyInput("abc"))).toBe(true);
   });
 });

@@ -111,4 +111,53 @@ describe.skipIf(!url)("inventory (database)", () => {
     const code = await db.$transaction((t) => nextItemCode(t, "FINISHED"));
     expect(code).toMatch(/^BJ-\d{3,}$/);
   });
+
+  describe("rincian mutasi", () => {
+    it("stok masuk menyimpan harga, pemasok, rujukan, tanggal dan memperbarui harga pokok rata-rata", async () => {
+      const when = new Date("2026-11-01T05:00:00Z");
+      const baru = await db.item.create({ data: { kind: "RAW", code: `${tag}-PAKU`, name: "Paku", unit: "kg" } });
+      try {
+        await db.$transaction((t) => applyMovement(t, { itemId: baru.id, type: "MASUK", qty: 10, unitCost: 100, supplier: "Toko A", reference: "NOTA-1", occurredAt: when }));
+        const r = await db.$transaction((t) => applyMovement(t, { itemId: baru.id, type: "MASUK", qty: 10, unitCost: 200 }));
+        expect(Number(r.movement.unitCost)).toBe(200);
+        const first = await db.stockMovement.findFirstOrThrow({ where: { itemId: baru.id, reference: "NOTA-1" } });
+        expect(first.supplier).toBe("Toko A");
+        expect(first.occurredAt.toISOString()).toBe(when.toISOString());
+        expect(Number((await db.item.findUniqueOrThrow({ where: { id: baru.id } })).unitCost)).toBe(150);
+      } finally {
+        await db.stockMovement.deleteMany({ where: { itemId: baru.id } });
+        await db.item.delete({ where: { id: baru.id } });
+      }
+    });
+
+    it("menolak tanggal masa depan serta harga/pemasok pada stok keluar", async () => {
+      const future = new Date(Date.now() + 10 * 86_400_000);
+      await expect(db.$transaction((t) => applyMovement(t, { itemId: besi, type: "MASUK", qty: 1, occurredAt: future }))).rejects.toThrow(StockRuleError);
+      await expect(db.$transaction((t) => applyMovement(t, { itemId: besi, type: "KELUAR", qty: 1, unitCost: 5 }))).rejects.toThrow(StockRuleError);
+      await expect(db.$transaction((t) => applyMovement(t, { itemId: besi, type: "KELUAR", qty: 1, supplier: "X" }))).rejects.toThrow(StockRuleError);
+    });
+
+    it("stok keluar untuk proyek menyimpan rujukan proyek; proyek tidak ada ditolak", async () => {
+      await expect(db.$transaction((t) => applyMovement(t, { itemId: besi, type: "KELUAR", qty: 1, projectId: "tidak-ada" }))).rejects.toThrow("Proyek tujuan");
+      const p = await db.project.create({ data: { code: `${tag}-PRY`, kind: "STOK", name: "Uji" } });
+      try {
+        await db.$transaction((t) => applyMovement(t, { itemId: besi, type: "MASUK", qty: 5 }));
+        const r = await db.$transaction((t) => applyMovement(t, { itemId: besi, type: "KELUAR", qty: 2, projectId: p.id }));
+        expect(r.movement.refType).toBe("PROYEK");
+        expect(r.movement.refId).toBe(p.id);
+      } finally {
+        await db.stockMovement.deleteMany({ where: { refType: "PROYEK", refId: p.id } });
+        await db.project.delete({ where: { id: p.id } });
+      }
+    });
+
+    it("stok opname: selisih dihitung dari saldo, sama dengan saldo ditolak", async () => {
+      const cur = await onHand(besi);
+      const r = await db.$transaction((t) => applyMovement(t, { itemId: besi, type: "PENYESUAIAN", qty: 0, countedQty: cur + 3, note: "hitung fisik" }));
+      expect(Number(r.movement.qty)).toBe(3);
+      expect(await onHand(besi)).toBe(cur + 3);
+      await expect(db.$transaction((t) => applyMovement(t, { itemId: besi, type: "PENYESUAIAN", qty: 0, countedQty: cur + 3, note: "lagi" }))).rejects.toThrow(StockRuleError);
+      await expect(db.$transaction((t) => applyMovement(t, { itemId: besi, type: "MASUK", qty: 1, countedQty: 5 }))).rejects.toThrow(StockRuleError);
+    });
+  });
 });
