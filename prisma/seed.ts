@@ -17,6 +17,18 @@ async function main() {
     create: { code: "SBA", name: "CV Singgasana Benderang Abadi", ppnRate: 11 },
   });
 
+  // Kategori aset bawaan (umur manfaat dalam bulan, penyusutan garis lurus); bisa diubah di /aset/kategori.
+  const categories = [
+    { name: "Mesin produksi", type: "MESIN", usefulLifeMonths: 96 },
+    { name: "Kendaraan roda empat", type: "KENDARAAN", usefulLifeMonths: 96 },
+    { name: "Kendaraan roda dua", type: "KENDARAAN", usefulLifeMonths: 48 },
+    { name: "Peralatan kerja", type: "PERALATAN", usefulLifeMonths: 48 },
+    { name: "Peralatan kantor", type: "PERALATAN", usefulLifeMonths: 48 },
+  ] as const;
+  for (const c of categories) {
+    await db.assetCategory.upsert({ where: { name: c.name }, update: {}, create: { ...c } });
+  }
+
   const email = (process.env.ADMIN_EMAIL ?? "direktur@example.com").toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   if (!password) {

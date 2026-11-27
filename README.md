@@ -22,7 +22,7 @@ Next.js (TypeScript) + Tailwind + komponen gaya shadcn/ui hitam-putih, PostgreSQ
   - `POST /api/inventory/material-issue` `{ productId, units, productionId }`
   - `POST /api/inventory/ship` `{ productId, qty, deliveryId, note? }`
 - UI: `/inventory` (Barang jadi / Bahan baku, status Aman-Menipis-Habis, pergerakan terakhir), `/inventory/mutasi` (riwayat dengan filter), `/inventory/mutasi/baru`, `/inventory/barang/[id]` (data, BOM, riwayat). Gudang mengelola stok; Direktur dan Admin melihat dan mengelola semua; Marketing dan Keuangan hanya melihat.
-- Tidak termasuk: PO dan penyusutan aset.
+- Tidak termasuk: PO.
 
 ## Modul Proyek — isi
 - Pelanggan (`/pelanggan`): dikelola lewat hak akses modul Order (Marketing, Admin, Direktur); dipakai bersama GTF dan SBA.
@@ -35,6 +35,16 @@ Next.js (TypeScript) + Tailwind + komponen gaya shadcn/ui hitam-putih, PostgreSQ
 - Semua perubahan satu proyek dikunci per proyek (advisory lock) sehingga dua permintaan bersamaan tidak melewati batas jumlah.
 - UI: `/proyek` (daftar berjalan / produksi stok / selesai, filter perusahaan, posisi tahapan semua proyek), `/proyek/baru`, `/proyek/[id]` (tab Produksi, Pengiriman, Biaya). Pembatalan proyek (hak `delete`, Direktur) hanya bila belum ada bahan, QC, atau kiriman.
 - Dokumen penagihan ada di modul Dokumen (di bawah); halaman proyek menampilkan KO, invoice, dan status pembayarannya.
+
+## Modul Aset — isi
+- Master aset (`Asset`, `/aset`): mesin, kendaraan, peralatan per perusahaan (GTF/SBA); kode otomatis `MSN-001`, `KDR-001`, `PRL-001`. Data: kategori, merek, no. seri/polisi, lokasi, tanggal dan nilai perolehan, nilai sisa, umur manfaat, status (Aktif, Dalam perawatan, Rusak, Dijual, Dihapuskan). Pengguna yang dibatasi ke satu perusahaan hanya melihat asetnya.
+- Kategori (`/aset/kategori`): jenis + umur manfaat bawaan (bulan); kategori bawaan dibuat oleh `db:seed`.
+- Penyusutan garis lurus per bulan penuh (`src/lib/asset.ts`): (perolehan − nilai sisa) / umur manfaat, dihitung dalam sen; berhenti di nilai sisa saat umur manfaat habis dan pada tanggal pelepasan. Umur manfaat 0 = tidak disusutkan. Nilai buku dihitung saat ditampilkan, tidak disimpan.
+- Riwayat perawatan/servis (`AssetMaintenance`): jenis, tanggal, biaya, vendor, uraian, jadwal berikutnya; daftar aset menandai jadwal terlambat atau dalam 30 hari. Hapus catatan hanya Direktur.
+- Penugasan (`AssetAssignment`): satu penugasan terbuka per aset, hanya untuk aset Aktif, dengan riwayat serah-terima.
+- Pelepasan (hak `approve`, Direktur): dijual (dengan hasil penjualan, laba/rugi terhadap nilai buku) atau dihapuskan; aset dikunci dan penugasan terbuka ditutup. Aset tanpa riwayat boleh dihapus (hak `delete`).
+- Semua perubahan satu aset dikunci per aset (advisory lock); aturan nilai juga dijaga constraint database. Perubahan penting masuk audit log.
+- Hak akses: Direktur penuh; Admin dan Gudang membuat dan mengubah.
 
 ## Pengembangan lokal
 ```bash
@@ -57,7 +67,7 @@ docker compose up -d --build
 - Pulihkan: `./deploy/restore.sh backups/daily/<file>.sql.gz`.
 
 ## Keputusan yang berlaku
-Barang jadi masuk stok saat QC lulus; satu gudang barang jadi; bahan baku juga dicatat; tanpa penyusutan aset dan tanpa PO untuk sekarang.
+Barang jadi masuk stok saat QC lulus; satu gudang barang jadi; bahan baku juga dicatat; tanpa PO untuk sekarang.
 
 ## Modul Dokumen — isi
 - Alur: **Penawaran (SPH)** → **Konfirmasi Order (KO)** → **Invoice** (satu per termin) → **Pembayaran** → **Kwitansi** (terbit otomatis per pembayaran). KO bisa dibuat dari penawaran (proyek produksinya dibuat otomatis) atau dari proyek pesanan yang sudah ada.
@@ -71,4 +81,4 @@ Barang jadi masuk stok saat QC lulus; satu gudang barang jadi; bahan baku juga d
 - Build Docker: font bawaan PDFKit disertakan lewat `outputFileTracingIncludes` di `next.config.ts`.
 
 ## Berikutnya
-Dashboard (angka dari semua modul), laporan, dan aset.
+Dashboard (angka dari semua modul) dan laporan.
