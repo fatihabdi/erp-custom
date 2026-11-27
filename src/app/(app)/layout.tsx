@@ -1,6 +1,7 @@
 import { LogOut } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { allowedModules, can, ROLE_LABEL } from "@/lib/permissions";
+import { searchableKinds } from "@/lib/search";
 import { logout } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
 import { SidebarNav, Topbar, type NavItem } from "@/components/app-nav";
@@ -53,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar />
+        <Topbar searchable={searchableKinds(user.role).length > 0} />
         <main className="flex-1 px-8 py-8">{children}</main>
       </div>
     </div>
