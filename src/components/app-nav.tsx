@@ -58,7 +58,7 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
 const SEGMENT: Record<string, string> = {
   dashboard: "Dashboard", penawaran: "Penawaran", order: "Konfirmasi Order", "sales-order": "Sales Order", proyek: "Proyek", inventory: "Stok", produk: "Master Produk",
   invoice: "Invoice", kwitansi: "Kwitansi", aset: "Aset", pelanggan: "Pelanggan", pengaturan: "Pengaturan",
-  pengguna: "Pengguna", laporan: "Laporan", baru: "Buat baru", barang: "Barang", mutasi: "Mutasi", kategori: "Kategori",
+  pengguna: "Pengguna", laporan: "Laporan", penjualan: "Penjualan", piutang: "Piutang aging", kas: "Penerimaan kas", margin: "Margin proyek", termin: "DP & termin", ppn: "PPN keluaran", baru: "Buat baru", barang: "Barang", mutasi: "Mutasi", kategori: "Kategori",
 };
 
 export function Topbar() {

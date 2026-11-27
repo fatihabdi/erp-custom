@@ -44,7 +44,7 @@ export const PERMISSIONS: Matrix = {
   },
   ADMIN: {
     dashboard: READ, penawaran: WRITE, order: WRITE, "sales-order": WRITE, proyek: WRITE, inventory: WRITE, produk: WRITE,
-    invoice: WRITE, kwitansi: WRITE, aset: WRITE, laporan: READ, pengguna: ALL, pengaturan: WRITE,
+    invoice: WRITE, kwitansi: WRITE, aset: WRITE, pengguna: ALL, pengaturan: WRITE,
   },
   MARKETING: {
     dashboard: READ, penawaran: WRITE, order: WRITE, "sales-order": WRITE, proyek: READ, inventory: READ, produk: READ,
@@ -57,7 +57,8 @@ export const PERMISSIONS: Matrix = {
     dashboard: READ, penawaran: READ, order: READ, proyek: READ, inventory: READ, produk: READ,
     invoice: WRITE, kwitansi: WRITE, laporan: READ,
   },
-  // Master Produk memuat harga jual dan harga pokok, jadi Gudang dan Ketua Produksi tidak punya akses ke modul ini.
+  // Laporan memuat omzet, piutang, dan margin seluruh perusahaan, jadi hanya Direktur dan Keuangan.
+// Master Produk memuat harga jual dan harga pokok, jadi Gudang dan Ketua Produksi tidak punya akses ke modul ini.
   // Ketua produksi hanya melihat Sales Order (acuan kerja) dan memperbarui tahapnya sendiri.
   // Tanpa akses dashboard, proyek, invoice, atau stok, jadi harga dan biaya tidak terlihat.
   KETUA_KAYU: { "sales-order": READ },
