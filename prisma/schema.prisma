@@ -240,10 +240,18 @@ model StockMovement {
   idempotencyKey String?      @unique
   userId         String?
   createdAt      DateTime     @default(now())
+  // Tanggal kejadian di lapangan (bisa mundur dari saat dicatat); createdAt tetap waktu pencatatan.
+  occurredAt     DateTime     @default(now())
+  // Hanya untuk stok masuk: harga beli per satuan (rupiah) dan pemasok.
+  unitCost       Decimal?     @db.Decimal(16, 2)
+  supplier       String?
+  // Nomor rujukan bebas: SO, nota pembelian, surat jalan.
+  reference      String?
   item           Item         @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
   @@index([itemId, createdAt])
   @@index([createdAt])
+  @@index([occurredAt])
   @@index([refType, refId])
   @@map("stock_movements")
 }

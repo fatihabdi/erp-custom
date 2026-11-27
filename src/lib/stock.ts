@@ -93,3 +93,51 @@ export function validateBomLines(lines: BomLineInput[]): void {
     seen.add(l.materialId);
   }
 }
+
+/**
+ * Harga pokok rata-rata bergerak setelah stok masuk dibeli dengan harga tertentu.
+ * Bila stok lama kosong, harga pokok mengikuti harga beli terbaru.
+ */
+export function weightedAverageCost(onHand: number, currentCost: number, qty: number, price: number): number {
+  if (!(qty > 0) || !Number.isFinite(price) || price < 0) throw new StockRuleError("Harga beli tidak valid.");
+  const base = Math.max(onHand, 0);
+  const total = base + qty;
+  return Math.round(((base * currentCost + qty * price) / total) * 100) / 100;
+}
+
+/** Tanggal mutasi tidak boleh di masa depan (toleransi 1 hari untuk selisih zona waktu) dan tidak absurd. */
+export function validateMovementDate(d: Date, now = new Date()): void {
+  if (Number.isNaN(d.getTime())) throw new StockRuleError("Tanggal mutasi tidak valid.");
+  if (d.getTime() > now.getTime() + 86_400_000) throw new StockRuleError("Tanggal mutasi tidak boleh di masa depan.");
+  if (d.getUTCFullYear() < 2000) throw new StockRuleError("Tanggal mutasi tidak valid.");
+}
+
+/** Selisih stok opname: hasil hitung fisik dikurangi saldo tercatat. */
+export function countDifference(onHand: number, counted: number): number {
+  if (!Number.isFinite(counted) || counted < 0) throw new StockRuleError("Hasil hitung tidak boleh negatif.");
+  const diff = round3(counted - onHand);
+  if (diff === 0) throw new StockRuleError("Hasil hitung sama dengan stok tercatat, tidak ada selisih.");
+  return diff;
+}
+
+/**
+ * Mengubah isian tanggal (YYYY-MM-DD, WIB) menjadi waktu kejadian. Hari ini atau kosong = sekarang;
+ * tanggal lain dicatat pukul 12.00 WIB supaya urutan harian tidak bergeser oleh zona waktu.
+ */
+export function parseMovementDate(input: string | null | undefined, now = new Date()): Date | undefined {
+  const v = input?.trim();
+  if (!v) return undefined;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new StockRuleError("Tanggal mutasi tidak valid.");
+  const today = new Date(now.getTime() + 7 * 3600_000).toISOString().slice(0, 10);
+  if (v === today) return undefined;
+  const d = new Date(`${v}T12:00:00+07:00`);
+  if (Number.isNaN(d.getTime())) throw new StockRuleError("Tanggal mutasi tidak valid.");
+  return d;
+}
+
+/** Angka isian rupiah: "15.000" (pemisah ribuan) dan "12,5" (koma desimal) keduanya dipahami. */
+export function parseMoneyInput(v: string): number {
+  const t = v.trim();
+  const clean = /^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t) ? t.replace(/\./g, "") : t;
+  return Number(clean.replace(",", "."));
+}

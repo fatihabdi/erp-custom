@@ -21,7 +21,7 @@ Next.js (TypeScript) + Tailwind + komponen gaya shadcn/ui hitam-putih, PostgreSQ
   - `POST /api/inventory/qc-pass` `{ productId, qty, qcId, projectId?, note? }`
   - `POST /api/inventory/material-issue` `{ productId, units, productionId }`
   - `POST /api/inventory/ship` `{ productId, qty, deliveryId, note? }`
-- UI: `/inventory` (Barang jadi / Bahan baku, status Aman-Menipis-Habis, pergerakan terakhir), `/inventory/mutasi` (riwayat dengan filter), `/inventory/mutasi/baru`, `/inventory/barang/[id]` (data, BOM, riwayat). Gudang mengelola stok; Direktur dan Admin melihat dan mengelola semua; Marketing dan Keuangan hanya melihat.
+- UI: `/inventory` (Barang jadi / Bahan baku, status Aman-Menipis-Habis, pergerakan terakhir), `/inventory/mutasi` (riwayat dengan filter), `/inventory/mutasi/baru` (pilih barang dengan pencarian; tanggal mutasi, harga beli dan pemasok untuk stok masuk, nomor referensi, proyek tujuan untuk stok keluar, stok opname berdasarkan hasil hitung fisik; harga pokok bahan baku dirata-rata dari pembelian), `/inventory/barang/[id]` (data, BOM, riwayat). Gudang mengelola stok; Direktur dan Admin melihat dan mengelola semua; Marketing dan Keuangan hanya melihat.
 - Tidak termasuk: PO.
 
 ## Modul Proyek — isi

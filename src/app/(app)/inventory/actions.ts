@@ -6,8 +6,8 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
-import { applyMovement, InsufficientStockError, nextItemCode, setBom } from "@/lib/inventory";
-import { MANUAL_TYPES, round3, StockRuleError } from "@/lib/stock";
+import { applyMovement, InsufficientStockError, NotFoundError, nextItemCode, setBom } from "@/lib/inventory";
+import { MANUAL_TYPES, parseMoneyInput, parseMovementDate, round3, StockRuleError } from "@/lib/stock";
 
 export type FormState = { error?: string; ok?: string } | undefined;
 
@@ -18,32 +18,68 @@ const numField = z.preprocess(
 );
 
 function message(e: unknown): string {
-  if (e instanceof InsufficientStockError || e instanceof StockRuleError) return e.message;
+  if (e instanceof InsufficientStockError || e instanceof StockRuleError || e instanceof NotFoundError) return e.message;
   if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return "Kode atau data yang sama sudah ada.";
   throw e;
 }
 
+const optQty = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() !== "" ? Number(v.trim().replace(",", ".")) : undefined),
+  z.number({ error: "Hasil hitung tidak valid" }).min(0, "Hasil hitung tidak boleh negatif").optional(),
+);
+const optMoney = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() !== "" ? parseMoneyInput(v) : undefined),
+  z.number({ error: "Harga beli tidak valid" }).min(0, "Harga beli tidak boleh negatif").optional(),
+);
+const optText = (max: number) => z.string().trim().max(max).optional().transform((v) => v || undefined);
+
 const movementSchema = z.object({
   type: z.enum(MANUAL_TYPES),
   itemId: z.string().min(1, "Pilih barang"),
-  qty: numField,
-  note: z.string().trim().max(300).optional(),
+  qty: numField.optional(),
+  counted: optQty,
+  date: z.string().optional(),
+  note: optText(300),
+  reference: optText(80),
+  supplier: optText(120),
+  unitCost: optMoney,
+  projectId: optText(40),
 });
 
 export async function createMovement(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requirePermission("inventory", "edit");
-  const parsed = movementSchema.safeParse({
-    type: fd.get("type"), itemId: fd.get("itemId"), qty: fd.get("qty"), note: fd.get("note") ?? undefined,
-  });
+  const raw = Object.fromEntries(
+    ["type", "itemId", "qty", "counted", "date", "note", "reference", "supplier", "unitCost", "projectId"]
+      .map((k) => [k, fd.get(k) ?? undefined]),
+  );
+  const parsed = movementSchema.safeParse(raw);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { type, itemId, qty, note } = parsed.data;
-  // Penyesuaian dimasukkan sebagai selisih bertanda (+/-); jenis lain sebagai jumlah positif.
+  const d = parsed.data;
+  // Penyesuaian = stok opname: yang diisi hasil hitung fisik, selisih dihitung server.
+  if (d.type === "PENYESUAIAN" && d.counted === undefined) return { error: "Isi hasil hitung fisik." };
+  if (d.type !== "PENYESUAIAN" && d.qty === undefined) return { error: "Jumlah wajib diisi" };
   try {
-    await db.$transaction((tx) => applyMovement(tx, { itemId, type, qty, note, userId: user.id }));
+    const occurredAt = parseMovementDate(d.date);
+    const { movement } = await db.$transaction((tx) => applyMovement(tx, {
+      itemId: d.itemId, type: d.type, qty: d.qty ?? 0, note: d.note, userId: user.id,
+      occurredAt,
+      reference: d.reference,
+      ...(d.type === "MASUK" ? { supplier: d.supplier, unitCost: d.unitCost } : {}),
+      ...(d.type === "KELUAR" ? { projectId: d.projectId } : {}),
+      ...(d.type === "PENYESUAIAN" ? { countedQty: d.counted } : {}),
+    }));
+    await db.auditLog.create({
+      data: {
+        userId: user.id, action: `stok.${d.type.toLowerCase()}`, entity: "Item", entityId: d.itemId,
+        detail: {
+          qty: Number(movement.qty), note: d.note, reference: d.reference, supplier: d.supplier,
+          unitCost: d.unitCost, projectId: d.projectId, counted: d.counted,
+        },
+      },
+    });
   } catch (e) {
     return { error: message(e) };
   }
-  await db.auditLog.create({ data: { userId: user.id, action: `stok.${type.toLowerCase()}`, entity: "Item", entityId: itemId, detail: { qty, note } } });
   revalidatePath("/inventory");
   redirect("/inventory?tersimpan=1");
 }

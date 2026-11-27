@@ -1,6 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import {
-  bomRequirement, findShortages, kindAllowed, round3, signedDelta, StockRuleError, validateBomLines,
+  bomRequirement, countDifference, findShortages, kindAllowed, round3, signedDelta, StockRuleError, validateBomLines,
+  validateMovementDate, weightedAverageCost,
   MOVEMENT_LABEL,
   type BomLineInput, type ItemKindName, type MovementTypeName, type Shortage,
 } from "@/lib/stock";
@@ -25,6 +26,17 @@ export type MovementInput = {
   refId?: string | null;
   idempotencyKey?: string | null;
   userId?: string | null;
+  /** Tanggal kejadian; bawaan: sekarang. */
+  occurredAt?: Date | null;
+  /** Hanya stok masuk: harga beli per satuan (rupiah) dan pemasok. */
+  unitCost?: number | null;
+  supplier?: string | null;
+  /** Nomor rujukan bebas (SO, nota, surat jalan). */
+  reference?: string | null;
+  /** Hanya stok keluar: proyek tujuan pemakaian. Disimpan sebagai rujukan PROYEK. */
+  projectId?: string | null;
+  /** Hanya penyesuaian (stok opname): hasil hitung fisik; selisih dihitung dari saldo terkunci. Mengganti `qty`. */
+  countedQty?: number | null;
 };
 
 async function advisoryLock(tx: Tx, key: string) {
@@ -51,7 +63,31 @@ export async function applyMovement(tx: Tx, input: MovementInput) {
   if (input.type === "PENYESUAIAN" && !input.note?.trim()) {
     throw new StockRuleError("Penyesuaian wajib diberi alasan.");
   }
-  const delta = signedDelta(input.type, input.qty);
+  if (input.occurredAt) validateMovementDate(input.occurredAt);
+  if (input.unitCost != null && input.type !== "MASUK") throw new StockRuleError("Harga beli hanya untuk stok masuk.");
+  if (input.unitCost != null && !(input.unitCost >= 0)) throw new StockRuleError("Harga beli tidak boleh negatif.");
+  if (input.supplier?.trim() && input.type !== "MASUK") throw new StockRuleError("Pemasok hanya untuk stok masuk.");
+  if (input.projectId && input.type !== "KELUAR") throw new StockRuleError("Proyek tujuan hanya untuk stok keluar.");
+  if (input.countedQty != null && input.type !== "PENYESUAIAN") throw new StockRuleError("Hasil hitung hanya untuk penyesuaian.");
+
+  let refType = input.refType ?? null;
+  let refId = input.refId ?? null;
+  if (input.projectId) {
+    const project = await tx.project.findUnique({ where: { id: input.projectId }, select: { id: true, status: true } });
+    if (!project) throw new NotFoundError("Proyek tujuan tidak ditemukan.");
+    if (project.status === "BATAL") throw new StockRuleError("Proyek tujuan sudah dibatalkan.");
+    refType = "PROYEK";
+    refId = project.id;
+  }
+
+  let qty = input.qty;
+  if (input.countedQty != null) {
+    // Kunci baris barang supaya selisih dihitung dari saldo yang benar-benar berlaku.
+    await tx.$queryRaw`SELECT id FROM items WHERE id = ${item.id} FOR UPDATE`;
+    const cur = await tx.item.findUniqueOrThrow({ where: { id: item.id }, select: { onHand: true } });
+    qty = countDifference(num(cur.onHand), input.countedQty);
+  }
+  const delta = signedDelta(input.type, qty);
 
   if (delta < 0) {
     // Pengurangan atomik: gagal bila saldo kurang, tanpa risiko dua permintaan bersamaan.
@@ -67,7 +103,17 @@ export async function applyMovement(tx: Tx, input: MovementInput) {
       );
     }
   } else {
-    await tx.item.update({ where: { id: item.id }, data: { onHand: { increment: delta } } });
+    // Harga pokok bahan baku mengikuti rata-rata bergerak dari pembelian; dihitung dengan saldo sebelum masuk.
+    let newCost: number | undefined;
+    if (input.type === "MASUK" && input.unitCost && item.kind === "RAW") {
+      await advisoryLock(tx, `item-cost:${item.id}`);
+      const cur = await tx.item.findUniqueOrThrow({ where: { id: item.id }, select: { onHand: true, unitCost: true } });
+      newCost = weightedAverageCost(num(cur.onHand), num(cur.unitCost), delta, input.unitCost);
+    }
+    await tx.item.update({
+      where: { id: item.id },
+      data: { onHand: { increment: delta }, ...(newCost !== undefined ? { unitCost: newCost } : {}) },
+    });
   }
   const after = await tx.item.findUniqueOrThrow({ where: { id: item.id }, select: { onHand: true } });
   const movement = await tx.stockMovement.create({
@@ -77,10 +123,14 @@ export async function applyMovement(tx: Tx, input: MovementInput) {
       qty: delta,
       balanceAfter: after.onHand,
       note: input.note?.trim() || null,
-      refType: input.refType ?? null,
-      refId: input.refId ?? null,
+      refType,
+      refId,
       idempotencyKey: input.idempotencyKey ?? null,
       userId: input.userId ?? null,
+      ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
+      unitCost: input.unitCost ?? null,
+      supplier: input.supplier?.trim() || null,
+      reference: input.reference?.trim() || null,
     },
   });
   return { movement, duplicate: false as const };
