@@ -52,6 +52,9 @@ describe("permissions", () => {
     expect(canUpdateStage("ADMIN", "FINISHING")).toBe(true);
     expect(canUpdateStage("GUDANG", "POTONG_KAYU")).toBe(false);
   });
+  it("laporan hanya untuk Direktur dan Keuangan", () => {
+    expect(ROLES.filter((r) => can(r, "laporan"))).toEqual(["DIREKTUR", "KEUANGAN"]);
+  });
   it("halaman awal: dashboard bila boleh", () => {
     expect(homePath("ADMIN")).toBe("/dashboard");
     expect(homePath("GUDANG")).toBe("/dashboard");

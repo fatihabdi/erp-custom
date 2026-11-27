@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Banknote, Box, Package, ChartColumn, ClipboardCheck, ClipboardList, FileText, Layers, LayoutDashboard,
-  Receipt, SlidersHorizontal, Truck, UserCog, Users, Search, type LucideIcon,
+  Receipt, SlidersHorizontal, Truck, UserCog, Users, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GlobalSearch } from "@/components/global-search";
 
 export type NavItem = { key: string; href: string; label: string; ready: boolean };
 
@@ -58,10 +59,10 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
 const SEGMENT: Record<string, string> = {
   dashboard: "Dashboard", penawaran: "Penawaran", order: "Konfirmasi Order", "sales-order": "Sales Order", proyek: "Proyek", inventory: "Stok", produk: "Master Produk",
   invoice: "Invoice", kwitansi: "Kwitansi", aset: "Aset", pelanggan: "Pelanggan", pengaturan: "Pengaturan",
-  pengguna: "Pengguna", laporan: "Laporan", baru: "Buat baru", barang: "Barang", mutasi: "Mutasi", kategori: "Kategori",
+  pengguna: "Pengguna", laporan: "Laporan", penjualan: "Penjualan", piutang: "Piutang aging", kas: "Penerimaan kas", margin: "Margin proyek", termin: "DP & termin", ppn: "PPN keluaran", baru: "Buat baru", barang: "Barang", mutasi: "Mutasi", kategori: "Kategori",
 };
 
-export function Topbar() {
+export function Topbar({ searchable = true }: { searchable?: boolean }) {
   const pathname = usePathname();
   const segs = pathname.split("/").filter(Boolean);
   const crumbs = segs.map((s, i) => ({ label: SEGMENT[s] ?? "Detail", href: `/${segs.slice(0, i + 1).join("/")}`, last: i === segs.length - 1 }));
@@ -75,14 +76,7 @@ export function Topbar() {
           </span>
         ))}
       </nav>
-      <div className="relative w-80 max-w-full" title="Pencarian global belum tersedia">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <input
-          disabled type="search" aria-label="Cari dokumen, pelanggan, barang"
-          placeholder="Cari dokumen, pelanggan, barang..."
-          className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground disabled:cursor-not-allowed"
-        />
-      </div>
+      {searchable && <GlobalSearch />}
     </header>
   );
 }
