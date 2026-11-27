@@ -2,6 +2,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { issueDocNumber } from "@/lib/doc-number";
 import { NotFoundError } from "@/lib/inventory";
 import { createProject, lock } from "@/lib/project";
+import { createProductionOrder } from "@/lib/sales-order";
 import {
   addDays, DocumentRuleError, orderAmounts, paymentPurpose, paymentState, sisaTagihan, termAmounts, toCents,
   validatePayment, validateTerms, type MethodName, type TermInput,
@@ -173,6 +174,7 @@ export async function convertQuotationToOrder(
       notes: input.notes?.trim() || null, createdById: input.userId ?? null,
     },
   });
+  await createProductionOrder(tx, order.id, q.lines.map((l) => ({ title: l.description, spec: l.spec })));
   await tx.quotation.update({ where: { id: q.id }, data: { status: "DISETUJUI" } });
   return { order, projectId: project.id };
 }
@@ -199,13 +201,15 @@ export async function createOrderFromProject(
   const number = await issueDocNumber(tx, { companyId: p.company.id, companyCode: p.company.code, docType: "KO", date });
   if (!p.orderRef) await tx.project.update({ where: { id: projectId }, data: { orderRef: number } });
   if (input.dueDate) await tx.project.update({ where: { id: projectId }, data: { dueDate: input.dueDate } });
-  return tx.salesOrder.create({
+  const order = await tx.salesOrder.create({
     data: {
       companyId: p.company.id, projectId, number, date,
       deliveryLocation: input.deliveryLocation?.trim() || null, workDays: input.workDays ?? null,
       notes: input.notes?.trim() || null, createdById: input.userId ?? null,
     },
   });
+  await createProductionOrder(tx, order.id);
+  return order;
 }
 
 export async function updateOrderDoc(tx: Tx, orderId: string, input: Omit<OrderDocInput, "date">) {

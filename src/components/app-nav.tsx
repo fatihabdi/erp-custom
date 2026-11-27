@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Banknote, Box, ChartColumn, ClipboardCheck, FileText, Layers, LayoutDashboard,
+  Banknote, Box, ChartColumn, ClipboardCheck, ClipboardList, FileText, Layers, LayoutDashboard,
   Receipt, SlidersHorizontal, Truck, UserCog, Users, Search, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,13 +11,13 @@ import { cn } from "@/lib/utils";
 export type NavItem = { key: string; href: string; label: string; ready: boolean };
 
 const ICON: Record<string, LucideIcon> = {
-  dashboard: LayoutDashboard, penawaran: FileText, order: ClipboardCheck, proyek: Layers, inventory: Box,
+  dashboard: LayoutDashboard, penawaran: FileText, order: ClipboardCheck, "sales-order": ClipboardList, proyek: Layers, inventory: Box,
   invoice: Receipt, kwitansi: Banknote, aset: Truck, pelanggan: Users, pengaturan: SlidersHorizontal,
   laporan: ChartColumn, pengguna: UserCog,
 };
 
 const GROUPS: { title: string; keys: string[] }[] = [
-  { title: "Menu", keys: ["dashboard", "penawaran", "order", "proyek", "inventory"] },
+  { title: "Menu", keys: ["dashboard", "penawaran", "order", "sales-order", "proyek", "inventory"] },
   { title: "Keuangan", keys: ["invoice", "kwitansi", "laporan"] },
   { title: "Data", keys: ["aset", "pelanggan", "pengguna", "pengaturan"] },
 ];
@@ -56,7 +56,7 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
 }
 
 const SEGMENT: Record<string, string> = {
-  dashboard: "Dashboard", penawaran: "Penawaran", order: "Konfirmasi Order", proyek: "Proyek", inventory: "Stok",
+  dashboard: "Dashboard", penawaran: "Penawaran", order: "Konfirmasi Order", "sales-order": "Sales Order", proyek: "Proyek", inventory: "Stok",
   invoice: "Invoice", kwitansi: "Kwitansi", aset: "Aset", pelanggan: "Pelanggan", pengaturan: "Pengaturan",
   pengguna: "Pengguna", laporan: "Laporan", baru: "Buat baru", barang: "Barang", mutasi: "Mutasi", kategori: "Kategori",
 };

@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/dokumen/[jenis]/[id]": ["./node_modules/pdfkit/js/standard-fonts/**", "./node_modules/pdfkit/js/data/**"],
   },
+  // Gambar acuan Sales Order (maks. 2 MB) dikirim lewat server action.
+  experimental: { serverActions: { bodySizeLimit: "3mb" } },
   turbopack: {
     rules: {
       "*.css": { loaders: ["@tailwindcss/turbopack"], as: "*.css" },

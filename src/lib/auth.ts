@@ -2,7 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { readSessionUserId } from "@/lib/session";
-import { can, type Action, type ModuleName, type RoleName } from "@/lib/permissions";
+import { can, homePath, type Action, type ModuleName, type RoleName } from "@/lib/permissions";
 
 export const getCurrentUser = cache(async () => {
   const id = await readSessionUserId();
@@ -33,6 +33,6 @@ export async function requireUser() {
 /** Untuk halaman dan aksi server: pastikan pengguna punya hak akses. */
 export async function requirePermission(module: ModuleName, action: Action = "view") {
   const user = await requireUser();
-  if (!can(user.role, module, action)) redirect("/dashboard?akses=ditolak");
+  if (!can(user.role, module, action)) redirect(`${homePath(user.role)}?akses=ditolak`);
   return user;
 }
