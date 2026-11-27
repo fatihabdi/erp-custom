@@ -50,6 +50,16 @@ export async function saveQuotationAction(_: FormState, fd: FormData): Promise<F
     return { error: docError(e) };
   }
   await audit(user.id, d.id ? "penawaran.ubah" : "penawaran.buat", "Quotation", id);
+  // "Kirim penawaran": simpan lalu langsung tandai terkirim (aturan alur status tetap dari setQuotationStatus).
+  if (fd.get("intent") === "kirim") {
+    try {
+      await db.$transaction((tx) => setQuotationStatus(tx, id, "TERKIRIM"));
+      await audit(user.id, "penawaran.status", "Quotation", id, { to: "TERKIRIM" });
+    } catch (e) {
+      revalidatePath("/penawaran");
+      return { error: `Draf tersimpan, tetapi gagal menandai terkirim: ${docError(e)}` };
+    }
+  }
   revalidatePath("/penawaran");
   redirect(`/penawaran/${id}`);
 }

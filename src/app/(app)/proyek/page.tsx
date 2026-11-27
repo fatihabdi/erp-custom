@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { Layers, PackageCheck, Truck, Pause } from "lucide-react";
+import { Layers, PackageCheck, Truck, Pause, Search } from "lucide-react";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { projectScope } from "@/lib/project-scope";
 import {
-  aggregateStages, currentStage, emptyStageDone, orderTotals, overallPercent, stagesFor, stageStatus, STAGE_LABEL, STAGES,
+  aggregateStages, currentStage, type StageName, emptyStageDone, orderTotals, overallPercent, stagesFor, stageStatus, STAGE_LABEL, STAGES,
 } from "@/lib/production";
 import { daysUntil, fmtDate, fmtRp } from "@/lib/format";
+import { paidOf } from "@/lib/documents";
+import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +34,8 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
     include: {
       company: { select: { code: true, ppnRate: true } }, customer: { select: { name: true } },
       lines: { orderBy: { sort: "asc" }, include: { product: { select: { name: true, unit: true } }, stages: true } },
+      salesOrder: { select: { number: true } },
+      invoices: { where: { status: "TERBIT" }, select: { total: true, dueDate: true, payments: { select: { amount: true, voidedAt: true } } } },
     },
   });
   const [running, listed] = await Promise.all([
@@ -56,6 +60,7 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
       pct: overallPercent(lines, stages),
       cur: currentStage(lines, stages),
       held: lines.some((l) => l.heldStages.length > 0),
+      heldStage: lines.flatMap((l) => l.heldStages)[0] as StageName | undefined,
     };
   };
   const rs = running.map(shape);
@@ -65,7 +70,18 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
   const heldFirst = rs.find((r) => r.held);
   const stockRuns = rs.filter((r) => r.p.kind === "STOK");
 
+  // Status pembayaran per proyek pesanan, dari invoice terbit.
+  const payOf = (p: (typeof running)[number]): { label: string; dot: "gray" | "black" | "green" | "amber" | "red" } | null => {
+    if (p.kind !== "ORDER") return null;
+    if (p.invoices.length === 0) return { label: "Belum ditagih", dot: "gray" };
+    const open = p.invoices.filter((i) => paidOf(i.payments) < Number(i.total));
+    if (open.length === 0) return { label: "Lunas", dot: "green" };
+    if (open.some((i) => daysUntil(i.dueDate) < 0)) return { label: "Lewat jatuh tempo", dot: "red" };
+    if (p.invoices.some((i) => paidOf(i.payments) > 0)) return { label: "Dibayar sebagian", dot: "amber" };
+    return { label: "Menunggu bayar", dot: "black" };
+  };
   const rows = listed.map(shape).sort((a, b) => (a.p.dueDate?.getTime() ?? Infinity) - (b.p.dueDate?.getTime() ?? Infinity));
+  const showPay = can(user.role, "invoice", "view");
   const canOrder = can(user.role, "order", "create");
   const canInternal = can(user.role, "proyek", "create");
   const qs = (o: Partial<SP>) => {
@@ -82,16 +98,16 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
           <p className="text-sm text-muted-foreground">Semua proyek yang sedang dikerjakan, diurutkan dari tanggal kirim terdekat</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canInternal && <Button asChild variant="outline"><Link href="/proyek/baru?jenis=stok">+ Produksi internal</Link></Button>}
-          {canOrder && <Button asChild><Link href="/proyek/baru">+ Proyek</Link></Button>}
+          {canOrder && <Button asChild variant="outline"><Link href="/proyek/baru">+ Proyek</Link></Button>}
+          {canInternal && <Button asChild><Link href="/proyek/baru?jenis=stok">+ Produksi internal</Link></Button>}
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat title="Proyek berjalan" value={orders.length} hint={`Nilai order ${fmtRp(orders.reduce((n, r) => n + r.total, 0))}`} icon={<Layers className="size-4 text-muted-foreground" aria-hidden />} />
-        <Stat title="Kirim dalam 7 hari" value={soon.length} hint={soon[0] ? `${soon[0].p.customer?.name ?? soon[0].p.name}, ${fmtDate(soon[0].p.dueDate!)}` : "—"} icon={<Truck className="size-4 text-muted-foreground" aria-hidden />} />
-        <Stat title="Tahap tertahan" value={heldCount} hint={heldFirst ? heldFirst.p.code : "—"} icon={<Pause className="size-4 text-muted-foreground" aria-hidden />} />
-        <Stat title="Produksi stok" value={stockRuns.length} hint={stockRuns[0] ? stockRuns[0].p.name : "—"} icon={<PackageCheck className="size-4 text-muted-foreground" aria-hidden />} />
+        <StatCard title="Proyek berjalan" value={orders.length} hint={`Nilai order ${fmtRp(orders.reduce((n, r) => n + r.total, 0))}`} icon={<Layers className="size-4 text-muted-foreground" aria-hidden />} />
+        <StatCard title="Kirim dalam 7 hari" value={soon.length} tone={soon.length ? "amber" : undefined} hint={soon[0] ? `${soon[0].p.customer?.name ?? soon[0].p.name}, ${fmtDate(soon[0].p.dueDate!)}` : "—"} icon={<Truck className="size-4 text-muted-foreground" aria-hidden />} />
+        <StatCard title="Tahap tertahan" value={heldCount} tone={heldCount ? "amber" : undefined} hint={heldFirst ? `${heldFirst.heldStage ? `${STAGE_LABEL[heldFirst.heldStage]}, ` : ""}${heldFirst.p.code.replace(/\/.*$/, "")}` : "—"} icon={<Pause className="size-4 text-muted-foreground" aria-hidden />} />
+        <StatCard title="Produksi stok" value={stockRuns.length} hint={stockRuns[0] ? `${stockRuns[0].p.name}${stockRuns[0].pct === 0 ? ", belum mulai" : ""}` : "—"} icon={<PackageCheck className="size-4 text-muted-foreground" aria-hidden />} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -109,7 +125,10 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
         <form className="w-72">
           {tab !== "berjalan" && <input type="hidden" name="tab" value={tab} />}
           {pt && <input type="hidden" name="pt" value={pt.code} />}
-          <Input name="q" defaultValue={q} placeholder="Cari proyek atau pelanggan…" aria-label="Cari proyek" />
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input name="q" defaultValue={q} className="pl-9" placeholder="Cari proyek atau pelanggan…" aria-label="Cari proyek" />
+          </div>
         </form>
       </div>
 
@@ -117,18 +136,17 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
         <CardContent className="p-0">
           <Table>
             <THead>
-              <TR><TH>Proyek</TH><TH>Perusahaan</TH><TH>Tahap</TH><TH>Progres</TH><TH>Est. kirim</TH></TR>
+              <TR><TH>Proyek</TH><TH>Perusahaan</TH><TH>Tahap</TH><TH>Progres</TH><TH className="whitespace-nowrap">Est. kirim</TH>{showPay && <TH>Pembayaran</TH>}</TR>
             </THead>
             <TBody>
-              {rows.length === 0 && <TR><TD colSpan={5} className="py-8 text-center text-muted-foreground">Tidak ada proyek.</TD></TR>}
+              {rows.length === 0 && <TR><TD colSpan={showPay ? 6 : 5} className="py-8 text-center text-muted-foreground">Tidak ada proyek.</TD></TR>}
               {rows.map(({ p, pct, cur, held }) => {
                 const left = p.dueDate ? daysUntil(p.dueDate) : null;
-                const items = p.lines.map((l) => `${l.qty} ${l.product.unit} ${l.product.name}`).join(", ");
                 return (
                   <TR key={p.id}>
                     <TD>
                       <Link href={`/proyek/${p.id}`} className="font-medium hover:underline">{p.customer?.name ?? p.name}</Link>
-                      <div className="text-xs text-muted-foreground">{p.code} · {p.customer ? `${p.name} · ` : ""}{items}</div>
+                      <div className="text-xs text-muted-foreground">{p.salesOrder?.number ?? p.code} · {p.name}</div>
                     </TD>
                     <TD>
                       {p.company ? (
@@ -147,9 +165,10 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
                     <TD className="whitespace-nowrap">
                       {p.dueDate ? fmtDate(p.dueDate) : "—"}
                       {left !== null && p.status === "BERJALAN" && (
-                        <div className="text-xs text-muted-foreground">{left < 0 ? `Lewat ${-left} hari` : left === 0 ? "Hari ini" : `${left} hari lagi`}</div>
+                        <div className={`text-xs ${left < 0 ? "text-destructive" : left <= 7 ? "text-warning" : "text-muted-foreground"}`}>{left < 0 ? `Lewat ${-left} hari` : left === 0 ? "Hari ini" : `${left} hari lagi`}</div>
                       )}
                     </TD>
+                    {showPay && <TD className="whitespace-nowrap">{(() => { const pay = payOf(p); return pay ? <Badge dot={pay.dot}>{pay.label}</Badge> : <span className="text-muted-foreground">—</span>; })()}</TD>}
                   </TR>
                 );
               })}
@@ -186,10 +205,10 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
                         const st = stageStatus(done[s], total, lines.some((l) => l.heldStages.includes(s)));
                         return (
                           <td key={s} className="px-1 py-2">
-                            <div className={`rounded-lg border p-2 text-center ${st === "TERTAHAN" ? "border-foreground" : "border-border"}`}>
-                              <div className="font-medium tabular-nums">{done[s]}/{total}</div>
-                              <Progress value={total ? (done[s] / total) * 100 : 0} className="my-1" />
-                              <div className="text-xs text-muted-foreground">{st === "SELESAI" ? "Selesai" : st === "BERJALAN" ? "Berjalan" : st === "TERTAHAN" ? "Tertahan" : "Belum"}</div>
+                            <div className={`rounded-lg border bg-card p-2 text-left ${st === "TERTAHAN" ? "border-warning" : "border-border"}`}>
+                              <div className={`font-semibold tabular-nums ${st === "BELUM" ? "text-muted-foreground" : ""}`}>{done[s]}/{total}</div>
+                              <Progress value={total ? (done[s] / total) * 100 : 0} tone={st === "TERTAHAN" ? "amber" : "default"} className="my-1" />
+                              <div className={`text-xs ${st === "TERTAHAN" ? "text-warning" : "text-muted-foreground"}`}>{st === "SELESAI" ? "Selesai" : st === "BERJALAN" ? "Berjalan" : st === "TERTAHAN" ? "Tertahan" : "Belum"}</div>
                             </div>
                           </td>
                         );
@@ -203,20 +222,5 @@ export default async function ProyekPage({ searchParams }: { searchParams: Promi
         </Card>
       )}
     </div>
-  );
-}
-
-function Stat({ title, value, hint, icon }: { title: string; value: number; hint: string; icon: React.ReactNode }) {
-  return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p>
-      </CardContent>
-    </Card>
   );
 }

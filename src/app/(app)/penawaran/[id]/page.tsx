@@ -34,9 +34,6 @@ export default async function PenawaranDetailPage({ params, searchParams }: { pa
     const customers = await db.customer.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } });
     return (
       <div className="flex max-w-6xl flex-col gap-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ubah penawaran</h1>
-        </div>
         <QuotationForm
           companies={[{ id: q.company.id, code: q.company.code, name: q.company.name, ppnRate: Number(q.ppnRate) }]}
           customers={customers} products={products} defaultDate={toDateInput(q.date)}
