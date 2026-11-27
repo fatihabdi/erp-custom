@@ -65,6 +65,8 @@ export async function createItem(_: FormState, fd: FormData): Promise<FormState>
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
+  // Barang jadi dibuat lewat Master Produk (kode PRD-, harga, tipe); di sini hanya bahan baku.
+  if (d.kind === "FINISHED") return { error: "Barang jadi dibuat di Master Produk." };
   let id: string;
   try {
     id = await db.$transaction(async (tx) => {
@@ -89,9 +91,16 @@ export async function updateItem(_: FormState, fd: FormData): Promise<FormState>
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
+  const cur = await db.item.findUnique({ where: { id }, select: { productId: true } });
+  if (!cur) return { error: "Barang tidak ditemukan." };
+  // Barang jadi mengikuti produk di katalog: nama, satuan, dan status aktif diubah di Master Produk.
+  const linked = !!cur.productId;
   await db.item.update({
     where: { id },
-    data: { name: d.name, unit: d.unit, minStock: round3(d.minStock), unitCost: Math.round(d.unitCost * 100) / 100, notes: d.notes ?? null, active: fd.get("active") === "on" },
+    data: {
+      ...(linked ? {} : { name: d.name, unit: d.unit, active: fd.get("active") === "on" }),
+      minStock: round3(d.minStock), unitCost: Math.round(d.unitCost * 100) / 100, notes: d.notes ?? null,
+    },
   });
   await db.auditLog.create({ data: { userId: user.id, action: "item.update", entity: "Item", entityId: id } });
   revalidatePath("/inventory");

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { catalogProducts } from "@/lib/catalog";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { createModuleFor } from "@/lib/production";
@@ -15,7 +16,8 @@ export default async function ProyekBaruPage({ searchParams }: { searchParams: P
   const [companies, customers, products] = await Promise.all([
     db.company.findMany({ where: { active: true }, orderBy: { code: "asc" } }),
     db.customer.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.item.findMany({ where: { kind: "FINISHED", active: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, unit: true } }),
+    // Produksi stok hanya untuk produk yang diproduksi; produk dagang bisa dipesan pelanggan tetapi tidak diproduksi.
+    catalogProducts(kind === "STOK" ? { type: "PRODUKSI" } : {}),
   ]);
   // Pengguna yang dibatasi ke perusahaan tertentu hanya melihat perusahaannya.
   const allowed = user.companies.length > 0 ? companies.filter((c) => user.companies.some((u) => u.id === c.id)) : companies;

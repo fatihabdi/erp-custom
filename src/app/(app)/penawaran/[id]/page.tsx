@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { catalogProducts } from "@/lib/catalog";
 import { requirePermission } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { noteLines, orderAmounts, termAmounts, toRows } from "@/lib/billing";
@@ -30,7 +31,7 @@ export default async function PenawaranDetailPage({ params, searchParams }: { pa
   const editing = canEdit && q.status === "DRAFT" && (await searchParams).ubah === "1";
 
   if (editing) {
-    const products = await db.item.findMany({ where: { kind: "FINISHED", active: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, unit: true } });
+    const products = await catalogProducts();
     const customers = await db.customer.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } });
     return (
       <div className="flex max-w-6xl flex-col gap-6">

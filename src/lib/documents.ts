@@ -1,6 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { issueDocNumber } from "@/lib/doc-number";
 import { NotFoundError } from "@/lib/inventory";
+import { createProduct, NEW_PRODUCT } from "@/lib/product";
 import { createProject, lock } from "@/lib/project";
 import { createProductionOrder } from "@/lib/sales-order";
 import {
@@ -154,6 +155,15 @@ export async function convertQuotationToOrder(
 
   const date = input.date ?? new Date();
   const number = await issueDocNumber(tx, { companyId: q.companyId, companyCode: q.company.code, docType: "KO", date });
+  // Item custom di penawaran boleh dijadikan produk baru di katalog (produksi, kategori Lainnya) saat KO terbit.
+  for (const l of lines) {
+    if (l.productId === NEW_PRODUCT) {
+      const { itemId } = await createProduct(tx, {
+        name: l.description, unit: l.unit, category: "LAINNYA", type: "PRODUKSI", spec: l.spec, price: num(l.unitPrice), cost: 0,
+      });
+      l.productId = itemId;
+    }
+  }
   for (const l of lines) {
     if (l.productId !== q.lines.find((x) => x.id === l.id)?.productId) {
       await tx.quotationLine.update({ where: { id: l.id }, data: { productId: l.productId } });

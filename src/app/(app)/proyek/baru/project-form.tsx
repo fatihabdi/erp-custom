@@ -10,10 +10,13 @@ import { fmtRp } from "@/lib/format";
 
 type Company = { id: string; code: string; name: string; ppnRate: number };
 type Customer = { id: string; name: string };
-type Product = { id: string; code: string; name: string; unit: string };
+type Product = { id: string; code: string; name: string; unit: string; price: number; type: "PRODUKSI" | "DAGANG" };
 type Line = { productId: string; qty: string; unitPrice: string };
 
 const parseRp = (s: string) => Number(s.replace(/\./g, "").replace(",", ".")) || 0;
+const priceText = (n: number) => (n > 0 ? String(n) : "");
+
+const newLine = (p?: Product): Line => ({ productId: p?.id ?? "", qty: "1", unitPrice: p ? priceText(p.price) : "" });
 
 export function ProjectForm({
   kind, companies, customers, products, defaultCustomerId,
@@ -21,7 +24,7 @@ export function ProjectForm({
   kind: "ORDER" | "STOK"; companies: Company[]; customers: Customer[]; products: Product[]; defaultCustomerId?: string;
 }) {
   const [state, action, pending] = useActionState(createProjectAction, undefined);
-  const [lines, setLines] = useState<Line[]>([{ productId: products[0]?.id ?? "", qty: "1", unitPrice: "" }]);
+  const [lines, setLines] = useState<Line[]>([newLine(products[0])]);
   const [companyId, setCompanyId] = useState(companies[0]?.id ?? "");
   const order = kind === "ORDER";
   const company = companies.find((c) => c.id === companyId);
@@ -29,6 +32,13 @@ export function ProjectForm({
     lines.map((l) => ({ qty: Number(l.qty) || 0, unitPrice: parseRp(l.unitPrice) })),
     order ? (company?.ppnRate ?? 0) : 0,
   );
+  // Memilih produk mengisi harga dari katalog (acuan, boleh diubah) kecuali harga sudah diubah manual.
+  const pick = (i: number, productId: string) => {
+    const p = products.find((x) => x.id === productId);
+    const prev = products.find((x) => x.id === lines[i].productId);
+    const untouched = !lines[i].unitPrice || (prev && parseRp(lines[i].unitPrice) === prev.price);
+    set(i, { productId, ...(untouched && p ? { unitPrice: priceText(p.price) } : {}) });
+  };
   const set = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
 
   return (
@@ -78,8 +88,8 @@ export function ProjectForm({
         <Label>Barang</Label>
         {lines.map((l, i) => (
           <div key={i} className={`grid items-center gap-2 ${order ? "grid-cols-[1fr_5rem_9rem_auto]" : "grid-cols-[1fr_5rem_auto]"}`}>
-            <Select aria-label="Barang jadi" value={l.productId} onChange={(e) => set(i, { productId: e.target.value })} required>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+            <Select aria-label="Barang jadi" value={l.productId} onChange={(e) => pick(i, e.target.value)} required>
+              {products.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}{p.type === "DAGANG" ? " (dagang)" : ""}</option>)}
             </Select>
             <Input aria-label="Jumlah" inputMode="numeric" value={l.qty} onChange={(e) => set(i, { qty: e.target.value })} required />
             {order && <Input aria-label="Harga satuan (tanpa PPN)" inputMode="decimal" placeholder="Harga satuan" value={l.unitPrice} onChange={(e) => set(i, { unitPrice: e.target.value })} />}
@@ -87,9 +97,9 @@ export function ProjectForm({
           </div>
         ))}
         <div>
-          <Button type="button" variant="outline" size="sm" onClick={() => setLines((ls) => [...ls, { productId: products[0]?.id ?? "", qty: "1", unitPrice: "" }])}>+ Tambah barang</Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => setLines((ls) => [...ls, newLine(products[0])])}>+ Tambah barang</Button>
         </div>
-        {products.length === 0 && <p className="text-sm font-medium">Belum ada barang jadi. Tambahkan dulu di menu Stok.</p>}
+        {products.length === 0 && <p className="text-sm font-medium">Belum ada produk. Tambahkan dulu di Master Produk.</p>}
       </div>
 
       {order && (

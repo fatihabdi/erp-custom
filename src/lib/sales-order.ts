@@ -2,6 +2,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { DocumentRuleError } from "@/lib/billing";
 import { NotFoundError } from "@/lib/inventory";
 import { detectImageType } from "@/lib/logo";
+import { productSpecLines } from "@/lib/product";
 
 type Tx = Prisma.TransactionClient;
 
@@ -35,19 +36,29 @@ export async function createProductionOrder(tx: Tx, orderId: string, hints?: { t
   if (!ko) throw new NotFoundError("Konfirmasi Order tidak ditemukan.");
   if (ko.production) return ko.production;
   const lines = await tx.projectLine.findMany({
-    where: { projectId: ko.projectId }, orderBy: { sort: "asc" }, include: { product: { select: { name: true } } },
+    where: { projectId: ko.projectId }, orderBy: { sort: "asc" },
+    include: { product: { select: { name: true, product: { select: { size: true, material: true, spec: true, image: true } } } } },
   });
-  return tx.productionOrder.create({
+  const order = await tx.productionOrder.create({
     data: {
       companyId: ko.companyId, projectId: ko.projectId, orderId: ko.id, number: soNumber(ko.number),
       lines: {
         create: lines.map((l, i) => ({
           projectLineId: l.id, sort: l.sort,
-          title: hints?.[i]?.title.trim() || l.product.name, spec: hints?.[i]?.spec?.trim() || null,
+          // Tanpa spesifikasi dari penawaran, pakai spesifikasi produk di katalog.
+          title: hints?.[i]?.title.trim() || l.product.name,
+          spec: hints?.[i]?.spec?.trim() || (l.product.product ? productSpecLines(l.product.product).join("\n") : "") || null,
         })),
       },
     },
+    include: { lines: true },
   });
+  // Gambar produk di katalog menjadi gambar acuan awal tiap barang (bisa diganti di halaman SO).
+  for (const soLine of order.lines) {
+    const img = lines.find((l) => l.id === soLine.projectLineId)?.product.product?.image;
+    if (img) await tx.productionOrderImage.create({ data: { lineId: soLine.id, data: img.data, mime: img.mime } });
+  }
+  return order;
 }
 
 export type SoUpdate = { notes?: string | null; lines: { id: string; title: string; spec?: string | null }[] };

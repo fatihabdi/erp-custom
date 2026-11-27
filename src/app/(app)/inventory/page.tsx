@@ -48,7 +48,7 @@ export default async function InventoryPage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Stok</h1>
-          <p className="text-sm text-muted-foreground">Satu gudang untuk GTF dan SBA</p>
+          <p className="text-sm text-muted-foreground">Satu gudang untuk GTF dan SBA. Daftar produk dan harga ada di Master Produk.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canEdit && (
@@ -81,8 +81,11 @@ export default async function InventoryPage({
             <input type="hidden" name="tab" value={tab} />
             <Input name="q" defaultValue={q} placeholder="Cari nama atau kode barang…" aria-label="Cari barang" />
           </form>
-          {canCreate && (
-            <Button asChild variant="outline"><Link href={`/inventory/barang/baru?jenis=${kind}`}>+ Barang</Link></Button>
+          {tab === "bahan" && canCreate && (
+            <Button asChild variant="outline"><Link href="/inventory/barang/baru">+ Bahan baku</Link></Button>
+          )}
+          {tab === "jadi" && can(user.role, "produk", "create") && (
+            <Button asChild variant="outline"><Link href="/produk/baru">+ Produk</Link></Button>
           )}
         </div>
       </div>

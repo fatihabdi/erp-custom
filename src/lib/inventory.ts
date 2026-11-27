@@ -194,8 +194,9 @@ export async function nextItemCode(tx: Tx, kind: ItemKindName): Promise<string> 
 /** Mengganti seluruh baris BOM sebuah barang jadi. Bahan harus bahan baku aktif. */
 export async function setBom(tx: Tx, productId: string, lines: BomLineInput[]) {
   validateBomLines(lines);
-  const product = await tx.item.findUnique({ where: { id: productId } });
+  const product = await tx.item.findUnique({ where: { id: productId }, include: { product: { select: { type: true } } } });
   if (!product || product.kind !== "FINISHED") throw new StockRuleError("BOM hanya untuk barang jadi.");
+  if (product.product?.type === "DAGANG" && lines.length > 0) throw new StockRuleError("Produk dagang dibeli jadi, tidak memakai BOM.");
   const mats = await tx.item.findMany({ where: { id: { in: lines.map((l) => l.materialId) } } });
   if (mats.length !== lines.length || mats.some((m) => m.kind !== "RAW")) {
     throw new StockRuleError("Semua bahan pada BOM harus berupa bahan baku yang terdaftar.");

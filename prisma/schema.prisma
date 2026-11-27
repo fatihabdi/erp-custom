@@ -32,6 +32,19 @@ enum ItemKind {
   FINISHED // barang jadi
 }
 
+// Jenis produk di katalog: diproduksi sendiri atau dibeli jadi untuk dijual lagi.
+enum ProductType {
+  PRODUKSI
+  DAGANG
+}
+
+enum ProductCategory {
+  SEKOLAH
+  KANTOR
+  RUMAHAN
+  LAINNYA
+}
+
 // Jenis mutasi stok. Jumlah (qty) pada StockMovement bertanda: + masuk, - keluar.
 enum MovementType {
   MASUK // stok masuk manual (bahan datang, stok awal)
@@ -157,9 +170,13 @@ model Item {
   onHand    Decimal  @default(0) @db.Decimal(14, 3)
   notes     String?
   active    Boolean  @default(true)
+  // Barang jadi menunjuk ke produk di katalog (nama, satuan, dan status aktif mengikuti produk).
+  // Kosong untuk bahan baku.
+  productId String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  product        Product?        @relation(fields: [productId], references: [id], onDelete: Restrict)
   movements      StockMovement[]
   bomLines       BomLine[]       @relation("BomProduct")
   usedInBoms     BomLine[]       @relation("BomMaterial")
@@ -168,6 +185,43 @@ model Item {
 
   @@index([kind, active])
   @@map("items")
+}
+
+// Master produk (katalog): satu baris = satu produk yang bisa dijual, termasuk tiap varian ukuran/warna/bahan.
+// Harga jual tanpa PPN dan hanya acuan: harga yang dipakai tersimpan di baris dokumen (penawaran, proyek).
+// Stok tidak disimpan di sini: tiap produk punya satu barang jadi di Inventory (Item.productId).
+model Product {
+  id        String          @id @default(cuid())
+  code      String          @unique // PRD-001 (produk migrasi dari barang jadi lama tetap BJ-001)
+  name      String
+  category  ProductCategory @default(LAINNYA)
+  type      ProductType     @default(PRODUKSI)
+  unit      String // unit, set, lembar, ...
+  size      String? // ukuran, mis. 120 x 60 x 75 cm
+  material  String? // bahan
+  spec      String? // spesifikasi lain, satu butir per baris
+  price     Decimal         @default(0) @db.Decimal(16, 2) // harga jual acuan, tanpa PPN
+  cost      Decimal         @default(0) @db.Decimal(16, 2) // harga pokok, diisi manual
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  item  Item?
+  image ProductImage?
+
+  @@index([active, category])
+  @@map("products")
+}
+
+// Gambar produk, disimpan terpisah seperti logo supaya tidak ikut terbaca di setiap query.
+model ProductImage {
+  productId String   @id
+  data      Bytes
+  mime      String // image/png atau image/jpeg
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
 }
 
 // Riwayat mutasi stok; tidak pernah diubah atau dihapus (koreksi = mutasi baru).

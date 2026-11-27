@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { catalogProducts } from "@/lib/catalog";
 import { requirePermission } from "@/lib/auth";
 import { toDateInput } from "@/lib/format";
 import { QuotationForm } from "./quotation-form";
@@ -9,7 +10,7 @@ export default async function PenawaranBaruPage({ searchParams }: { searchParams
   const [companies, customers, products] = await Promise.all([
     db.company.findMany({ where: { active: true }, orderBy: { code: "asc" } }),
     db.customer.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.item.findMany({ where: { kind: "FINISHED", active: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, unit: true } }),
+    catalogProducts(),
   ]);
   const allowed = (user.companies.length > 0 ? companies.filter((c) => user.companies.some((u) => u.id === c.id)) : companies)
     .map((c) => ({ id: c.id, code: c.code, name: c.name, ppnRate: Number(c.ppnRate) }));

@@ -12,6 +12,7 @@ const MENU: Record<string, string> = {
   "sales-order": "Sales Order",
   proyek: "Proyek",
   inventory: "Stok",
+  produk: "Master Produk",
   invoice: "Invoice",
   kwitansi: "Kwitansi",
   aset: "Aset",
@@ -21,7 +22,7 @@ const MENU: Record<string, string> = {
 };
 
 // Hanya modul yang sudah ada halamannya yang ditautkan.
-const READY = new Set(["dashboard", "penawaran", "order", "sales-order", "proyek", "inventory", "invoice", "kwitansi", "aset", "pengguna", "pengaturan"]);
+const READY = new Set(["dashboard", "penawaran", "order", "sales-order", "proyek", "inventory", "produk", "invoice", "kwitansi", "aset", "pengguna", "pengaturan"]);
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
